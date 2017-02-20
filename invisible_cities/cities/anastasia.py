@@ -25,7 +25,7 @@ class Anastasia(DetectorResponseCity):
                  file_out   = None,
                  nprint     = 10000,
                  
-                 # DiffuseElectronsCity
+                 # Detector Response City
                  ptab       = None,
                  wval       = 22.4,
                  transverse_diffusion   = 1.0,
@@ -51,7 +51,7 @@ class Anastasia(DetectorResponseCity):
     
                 ):
                                    
-        DiffuseElectronsCity.__init__(self,
+        DetectorResponseCity.__init__(self,
                                       run_number = run_number,
                                       files_in   = files_in,
                                       file_out   = None,
