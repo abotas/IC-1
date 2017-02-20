@@ -125,6 +125,48 @@ class City:
                              "PMT WL"       : sp.PMTWL,
                              "# SiPM"       : sp.NSIPM,
                              "SIPM WL"      : sp.SIPMWL})
+        
+class DiffuseTracksCity(City):
+    """
+    Extends city to read MCTracks from pytable, create electrons
+    for each hit, and diffuse electrons to the EL.
+    
+    """
+    def __init__(self,
+                 run_number  = 0,
+                 files_in    = None,
+                 file_out    = None,
+                 compression = 'ZLIB4',
+                 nprint      = 10000,
+                 
+                 # Parameters added at this level
+                 ptab = files_in.root.MC.MCTracks 
+                 
+                 # Config will overwrite
+                 w_val                  = 22.4
+                 transverse_diffusion   = 1.0 # mm/sqrt(m)
+                 longitudinal_diffusion = 0.3 # mm/sqrt(m)
+                 drift_speed = 1.0): #
+
+        City.__init__(self,
+                      run_number  = run_number,
+                      files_in    = files_in,
+                      file_out    = file_out,
+                      compression = compression,
+                      nprint      = nprint)
+        
+    def diffuse_electrons(self, row):
+        """
+        Compute location and time where electrons reach start of EL plane
+        for one event in self.ptab, beginning at ptab[row]
+        """
+        
+        # Do I hide this code in core?
+        pass
+    
+        
+
+
 
     config_file_format = """
     # set_input_files
