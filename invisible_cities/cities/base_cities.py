@@ -197,7 +197,7 @@ class DetectorResponseCity(City):
         self.el_width         = el_width
         self.el_traverse_time = el_traverse_time
 
-    def set_drifting_params(max_energy, electrons_prod_F, reduce_electrons, 
+    def set_drifting_params(self, max_energy, electrons_prod_F, reduce_electrons, 
                             w_val, drift_speed, transverse_diffusion,
                             longitudinal_diffusion):
         """
@@ -212,7 +212,7 @@ class DetectorResponseCity(City):
         self.transverse_diffusion   = transverse_diffusion
         self.longitudinal_diffusion = longitudinal_diffusion
         
-    def set_sensor_response_parmas(t_gain, gain_nf, num_bins, zmear, 
+    def set_sensor_response_params(self, t_gain, gain_nf, num_bins, zmear, 
                                    photon_detection_noise):
         """
         Necessary for EL_smear() and SiPM_response() in 
@@ -223,6 +223,9 @@ class DetectorResponseCity(City):
         self.num_bins = num_bins
         self.t_gain   = t_gain
         self.gain_nf  = gain_nf
+    
+        
+
 
 class SensorResponseCity(City):
     """A SensorResponseCity city extends the City base class adding the
