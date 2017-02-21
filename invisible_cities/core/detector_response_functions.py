@@ -1,14 +1,12 @@
 
+## Most of the arguments for most of these functions are dependent only on
+## the config file and do not change during a single run. Should I be passing
+## them into these functions each time I call the funcitons? or should I somehow
+## establish them as global vars
+
+
 import numpy  as np
 import tables as tb
-
-
-##TODO: CONFIG
-
-
-import numpy as np
-import tables as tb
-
 
 def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, electrons_prod_F):
     """
@@ -50,14 +48,18 @@ def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, 
         
         elif row['event_indx'] < current_event:
             raise ValueError('current_event skipped or poorly tracked')
+                
         
         # e_indf - e_ind is num drifting electrons from hit
         e_indf = e_ind + int(round(row['hit_energy'] * 10**6 / w_val))
         
+        # Low energy hit, reduce electrons is high
+        if e_indf == e_ind: continue
+        
         # add fluctuations in num drifting electrons produced
         if electrons_prod_F > 0:
-            e_indf += np.random.normal(
-                scale=sqrt((e_indf - e_ind) * electrons_prod_F))
+            e_indf += int(np.round(np.random.normal(
+                scale=np.sqrt((e_indf - e_ind) * electrons_prod_F))))
                 
             
         # Throw error if e_indf greater than electrons len
@@ -111,7 +113,7 @@ def diffuse_electrons(E_h, t_diff, l_diff):
     # Note not entirely necessary since mod in place
     return E_h
 
-def SiPM_response(e, xpos, ypos, z_bound, gain, xydim=10):
+def SiPM_response(e, xpos, ypos, z_bound, gain, xydim):
     """
     # All photons are emitted from the point where electron
     # hit EL plane. The el plane is 5mm from
@@ -130,7 +132,7 @@ def SiPM_response(e, xpos, ypos, z_bound, gain, xydim=10):
            * (1.0 / np.sqrt(DX2 + DY2 + z_bound[1]**2) \
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)), dtype=np.float32)
     
-def EL_smear(TS, E, xpos, ypos):
+def EL_smear(TS, E, xpos, ypos, xydim, el_width, el_sipm_d, t_gain, gain_nf):
     """
     arguments:
     TS, time of electron arrival to start of EL plane in units
@@ -175,11 +177,11 @@ def EL_smear(TS, E, xpos, ypos):
                        # outside (before) z window
             # Map 1
             ev_maps[:, :, f_ts] += SiPM_response(
-                e, xpos, ypos, zbs[:2], fg[0] * g)
+                e, xpos, ypos, zbs[:2], fg[0] * g, xydim)
         try:
             # Map 2
             ev_maps[:, :, f_ts + 1] += SiPM_response(
-                e, xpos, ypos, zbs[1:], fg[1] * g)
+                e, xpos, ypos, zbs[1:], fg[1] * g, xydim)
 
         # Outside window in Z
         except IndexError:
