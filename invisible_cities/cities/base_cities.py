@@ -126,45 +126,6 @@ class City:
                              "# SiPM"       : sp.NSIPM,
                              "SIPM WL"      : sp.SIPMWL})
         
-class DetectorResponseCity(City):
-    """
-    Extends city to read MCTracks from pytable, create electrons
-    for each hit, and diffuse electrons to the EL.
-    
-    """
-    def __init__(self,
-                 run_number  = 0,
-                 files_in    = None,
-                 file_out    = None,
-                 compression = 'ZLIB4',
-                 nprint      = 10000,
-                 
-                 # Parameters added at this level
-                 ptab = files_in.root.MC.MCTracks 
-                 
-                 # Config will overwrite
-                 max_energy             = 2.6e6
-                 reduce_electrons       = 100
-                 w_val                  = 22.4 * reduce_electrons
-                 transverse_diffusion   = 1.0 # mm/sqrt(m)
-                 longitudinal_diffusion = 0.3 # mm/sqrt(m)
-                 drift_speed = 1.0):
-
-        
-        City.__init__(self,
-                      run_number  = run_number,
-                      files_in    = files_in,
-                      file_out    = file_out,
-                      compression = compression,
-                      nprint      = nprint)
-        
-        self.w_val                  = w_val
-        self.max_energy             = max_energy
-        self.drift_speed            = drift_speed
-        self.reduce_electrons       = reduce_electrons
-        self.transverse_diffusion   = transverse_diffusion
-        self.longitudinal_diffusion = longitudinal_diffusion
-
     config_file_format = """
     # set_input_files
     PATH_IN {PATH_IN}
@@ -190,7 +151,78 @@ class DetectorResponseCity(City):
     def write_config_file(cls, filename, **options):
         with open(filename, 'w') as conf_file:
             conf_file.write(cls.config_file_contents(**options))
+        
+class DetectorResponseCity(City):
+    """
+    Extends City with set_geometry, set_drifting_params
+    and set_sensor_response_params methods to allow for
+    usage of core/detector_response_functions.py
+    
+    """
+    def __init__(self,
+                 run_number  = 0,
+                 files_in    = None,
+                 file_out    = None,
+                 compression = 'ZLIB4',
+                 nprint      = 10000):
 
+        
+        City.__init__(self,
+                      run_number  = run_number,
+                      files_in    = files_in,
+                      file_out    = file_out,
+                      compression = compression,
+                      nprint      = nprint)     
+        
+    def set_geometry(self, min_xp, max_xp, min_yp, max_yp, 
+                     min_zp, max_zp, xydim, zdim, xypitch, zpitch,
+                     el_sipm_d, el_width, el_traverse_time):
+        """
+        Set geometry
+        """
+        # Active Region
+        self.min_xp  = min_xp 
+        self.max_xp  = max_xp
+        self.min_yp  = min_yp
+        self.max_yp  = max_yp
+        self.min_zp  = min_zp
+        self.max_zp  = max_zp  
+        self.xydim   = xydim
+        self.zdim    = zdim
+        self.xypitch = xypitch
+        self.zpitch  = zpitch
+        
+        # Anode
+        self.el_sipm_d        = el_sipm_d
+        self.el_width         = el_width
+        self.el_traverse_time = el_traverse_time
+
+    def set_drifting_params(max_energy, electrons_prod_F, reduce_electrons, 
+                            w_val, drift_speed, transverse_diffusion,
+                            longitudinal_diffusion):
+        """
+        Necessary for drift_electrons(), diffuse_electrons()
+        in core/detector_response_functions.py
+        """
+        self.w_val                  = w_val
+        self.max_energy             = max_energy
+        self.drift_speed            = drift_speed
+        self.reduce_electrons       = reduce_electrons
+        self.electrons_prod_F       = electrons_prod_F
+        self.transverse_diffusion   = transverse_diffusion
+        self.longitudinal_diffusion = longitudinal_diffusion
+        
+    def set_sensor_response_parmas(t_gain, gain_nf, num_bins, zmear, 
+                                   photon_detection_noise):
+        """
+        Necessary for EL_smear() and SiPM_response() in 
+        core/detector_response_functions.py
+        """
+        self.photon_detection_noise = photon_detection_noise
+        self.zmear    = zmear
+        self.num_bins = num_bins
+        self.t_gain   = t_gain
+        self.gain_nf  = gain_nf
 
 class SensorResponseCity(City):
     """A SensorResponseCity city extends the City base class adding the
