@@ -1,10 +1,117 @@
 
-import numpy as np
+import numpy  as np
+import tables as tb
 
 
 ##TODO: CONFIG
 
-def SiPM_response(e, xpos, ypos, z_bound, gain, xydim=xydim):
+
+import numpy as np
+import tables as tb
+
+
+def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, electrons_prod_F):
+    """
+    arguments: 
+    pytable for 1 file of signal/background events,  
+    current row, since there are many rows/event
+    t_diff, num mm/sqrt(m) of transverse diffusion
+    l_diff, num mm/sqrt(m) of longitudinal diffusion
+    
+    returns: 
+    E, data for all electrons in one event in a numpy ndarray 
+    of shape = (num electrons in event, 3). 
+    Ex: E[n] = [xpos, ypos, time] 
+    ** note: I think this can only be done one event at a time since
+    ** there is a variable number of electrons in each event
+    
+    
+    nrow: keep track fo current row
+    """
+    current_event = ptab[nrow]['event_indx']
+    
+    # Approximate number of electrons + some padding
+    E = np.zeros((int(round(max_energy / w_val)), 3), 
+                         dtype=np.float32)
+    
+    lect = len(E)
+    
+    # Track of position in electrons
+    e_ind = 0  
+   
+    # Iterate over hits for an evt          
+    for row in ptab.iterrows(start=nrow):
+    
+        # Note: event_indx not always consecutive
+        if row['event_indx'] > current_event:
+                
+            # Delete excess space in electrons
+            return (E[:e_ind], row.nrow, False)
+        
+        elif row['event_indx'] < current_event:
+            raise ValueError('current_event skipped or poorly tracked')
+        
+        # e_indf - e_ind is num drifting electrons from hit
+        e_indf = e_ind + int(round(row['hit_energy'] * 10**6 / w_val))
+        
+        # add fluctuations in num drifting electrons produced
+        if electrons_prod_F > 0:
+            e_indf += np.random.normal(
+                scale=sqrt((e_indf - e_ind) * electrons_prod_F))
+                
+            
+        # Throw error if e_indf greater than electrons len
+        if e_indf >= lect: raise ValueError('electrons is not long enough')
+        
+        # Initial position of electrons 
+        E[e_ind: e_indf] = row['hit_position'] 
+        
+        # Add diffusion
+        E[e_ind: e_indf] = diffuse_electrons(E[e_ind: e_indf], t_diff, l_diff)
+
+        # Time when electrons arrive at EL
+        E[e_ind: e_indf, 2] /= drift_speed
+                                             
+        e_ind = e_indf
+                
+    # Return electrons and start row for next event 
+    return (E, -1, True)
+
+
+def diffuse_electrons(E_h, t_diff, l_diff):
+    """
+    Adds gausian noise to drifting electron position
+    mu=0, sig=mm/sqrt(drifting distance in m) 
+    Note, diffuse electrons is called for each hit, since
+    each hit produces a variable number of electrons and has
+    different coordinates. 
+    
+    E_h are elecrons for one hit
+    """    
+    
+    # z distance in meters
+    z_sqdist_from_el = np.sqrt(E_h[:, 2] / float(1000))
+    num_E_h = len(E_h)
+    if t_diff > 0:
+        
+        # mean=0, sigma=lat_diff * sqrt(m) 
+        lateral_drift = np.random.normal(
+            scale=t_diff * np.array([z_sqdist_from_el, z_sqdist_from_el], dtype=np.float32).T, 
+            size=(num_E_h, 2))
+
+        E_h[:, :2] += lateral_drift
+    
+    if l_diff > 0:
+        longitudinal_drift = np.random.normal(
+            scale=l_diff * z_sqdist_from_el, 
+            size=(num_E_h,))
+
+        E_h[:, 2] += longitudinal_drift
+    
+    # Note not entirely necessary since mod in place
+    return E_h
+
+def SiPM_response(e, xpos, ypos, z_bound, gain, xydim=10):
     """
     # All photons are emitted from the point where electron
     # hit EL plane. The el plane is 5mm from
