@@ -212,7 +212,7 @@ class DetectorResponseCity(City):
         self.transverse_diffusion   = transverse_diffusion
         self.longitudinal_diffusion = longitudinal_diffusion
         
-    def set_sensor_response_params(self, t_gain, gain_nf, num_bins, zmear, 
+    def set_sensor_response_params(self, t_gain, gain_nf, zmear, 
                                    photon_detection_noise):
         """
         Necessary for EL_smear() and SiPM_response() in 
@@ -220,7 +220,6 @@ class DetectorResponseCity(City):
         """
         self.photon_detection_noise = photon_detection_noise
         self.zmear    = zmear
-        self.num_bins = num_bins
         self.t_gain   = t_gain
         self.gain_nf  = gain_nf
     

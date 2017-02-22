@@ -13,7 +13,7 @@ from invisible_cities.core.configure  import configure, print_configuration, \
     read_config_file
     
 from invisible_cities.core.detector_response_functions import drift_electrons, \
-     diffuse_electrons, EL_smear, SiPM_response
+     diffuse_electrons, bin_EL, SiPM_response
     
 class Anastasia(DetectorResponseCity):
     """
@@ -24,7 +24,7 @@ class Anastasia(DetectorResponseCity):
     self.set_drifting_params(...)
     self.set_sensor_response_params(...)
     
-    2) do everything else
+    2) everything else
  
     """
     def __init__(self,
@@ -88,8 +88,8 @@ class Anastasia(DetectorResponseCity):
 
         # Find boarders of window (inclusive) by calculating mean position 
         # of electrons and adding and subtracting ndim/2 (or maybe median?)
-        xcenter = int(round(np.mean(E[:, 0]), - 1)) # value between 2 center sipms
-        ycenter = int(round(np.mean(E[:, 1]), - 1)) # value between 2 center sipms
+        xcenter = int(round( np.mean(E[:, 0]), - 1)) # value between 2 center sipms
+        ycenter = int(round( np.mean(E[:, 1]), - 1)) # value between 2 center sipms
         zcenter = int(round((np.mean(E[:, 2]) - 1) / 2.0) * 2 + 1) 
 
         xb = np.array([xcenter - 95, xcenter + 95], dtype=np.int16) # mm
@@ -138,10 +138,10 @@ class Anastasia(DetectorResponseCity):
         zpos = np.array(range(zb[0], zb[1] + int(self.zpitch), int(self.zpitch)), dtype=np.int32)
 
         # Find indices of electrons not in/close to the window
-        out_e = (E[:, 0] < xb[0] - self.d_cut) + (E[:, 0] > xb[1] + self.d_cut) \
-              + (E[:, 1] < yb[0] - self.d_cut) + (E[:, 1] > yb[1] + self.d_cut) \
-              + (E[:, 2] < zb[0] - self.el_traverse_time) \
-              + (E[:, 2] > zb[1] + self.el_traverse_time)
+        out_e = (E[:, 0] <= xb[0] - self.d_cut) + (E[:, 0] >= xb[1] + self.d_cut) \
+              + (E[:, 1] <= yb[0] - self.d_cut) + (E[:, 1] >= yb[1] + self.d_cut) \
+              + (E[:, 2] <= zb[0] - self.el_traverse_time) \
+              + (E[:, 2] >= zb[1] + self.zpitch)
 
         lect = float(len(E))
 
@@ -216,18 +216,18 @@ class Anastasia(DetectorResponseCity):
                 # z in units of time bin
                 TS  = (electrons[:, 2] - zpos[0]) / self.zpitch 
                 if (TS < -1).any():
-                    print(TS[np.where(TS < 0)[0]])
                     raise ValueError('Electrons are outside z window')    
 
                 # Use EL_smear to get SiPM maps
                 if self.zmear: 
-                    ev_maps = EL_smear(TS, E, xpos, ypos, self.xydim, 
+                    ev_maps = bin_EL(TS, electrons, xpos, ypos, 
+                                       self.xydim, self.zdim, self.zpitch,
+                                       self.el_traverse_time,
                                        self.el_width, self.el_sipm_d, 
                                        self.t_gain, self.gain_nf)
 
                 # Call SiPM_response directly
                 else:
-
                     # SiPM maps for an event
                     ev_maps = np.zeros((self.xydim, self.xydim, self.zdim), 
                                        dtype=np.float32)
@@ -253,6 +253,8 @@ class Anastasia(DetectorResponseCity):
 
                 # Save the event's maps
                 self.tmaps.append([ev_maps])
+                print(np.argmax(ev_maps), np.max(ev_maps))
+                print(np.mean(ev_maps))
 
                 accepted_events += 1
                 if accepted_events == self.NEVENTS: break
@@ -287,8 +289,8 @@ A.set_drifting_params(conf['max_energy'],
                       conf['transverse_diffusion'],
                       conf['longitudinal_diffusion'])
 
-A.set_sensor_response_params(conf['t_gain'],   conf['gain_nf'], 
-                             conf['num_bins'], conf['zmear'], 
+A.set_sensor_response_params(conf['t_gain'], conf['gain_nf'], 
+                             conf['zmear'], 
                              conf['photon_detection_noise'])
 
 A.set_output_earray()

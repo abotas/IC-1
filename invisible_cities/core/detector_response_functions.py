@@ -4,7 +4,6 @@
 ## them into these functions each time I call the funcitons? or should I somehow
 ## establish them as global vars
 
-
 import numpy  as np
 import tables as tb
 
@@ -113,7 +112,7 @@ def diffuse_electrons(E_h, t_diff, l_diff):
     # Note not entirely necessary since mod in place
     return E_h
 
-def SiPM_response(e, xpos, ypos, z_bound, gain, xydim):
+def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     """
     # All photons are emitted from the point where electron
     # hit EL plane. The el plane is 5mm from
@@ -132,7 +131,8 @@ def SiPM_response(e, xpos, ypos, z_bound, gain, xydim):
            * (1.0 / np.sqrt(DX2 + DY2 + z_bound[1]**2) \
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)), dtype=np.float32)
     
-def EL_smear(TS, E, xpos, ypos, xydim, el_width, el_sipm_d, t_gain, gain_nf):
+def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
+             el_traverse_time, el_width, el_sipm_d, t_gain, gain_nf):
     """
     arguments:
     TS, time of electron arrival to start of EL plane in units
@@ -150,17 +150,32 @@ def EL_smear(TS, E, xpos, ypos, xydim, el_width, el_sipm_d, t_gain, gain_nf):
     # SiPM maps for an event
     ev_maps = np.zeros((xydim, xydim, zdim), dtype=np.float32)
     
-    # Fraction of photons detected in each time bin 
-    FG   = np.empty((len(TS), 2), dtype=np.float32)
-    f_TS = np.array(np.floor(TS), dtype=np.int8) # int16 if zdim > 127!
-    FG[:, 0] = 1 - (TS - f_TS)
-    FG[:, 1] = TS - f_TS
+    # num maps that will receive photons form each electron
+    num_bins = max(2, int(el_traverse_time / zpitch) + 1)
     
-    # compute z integration boundaries for each time bin
-    z_integ_bound = np.ones((len(TS), 3), dtype=np.float32)
+    # Fraction of photons detected in each time bin 
+    FG   = np.empty((len(TS), num_bins), dtype=np.float32)
+    f_TS = np.array(np.floor(TS), dtype=np.int8) # int16 if zdim > 127!
+    
+    # Compute the fraction of gain in each relevant map
+    FG[:,     0] = (1 + f_TS - TS) * zpitch / float(el_traverse_time)
+    FG[:, 1: -1] = zpitch / float(el_traverse_time) # all the same
+    FG[:,    -1] = 1 - FG[:, 0] \
+                   - (num_bins - 2) * zpitch / float(el_traverse_time)
+                    
+    #** Note fraction of gain in each map is equivalent to fraction of 
+    #   time photons received by each map which is equivalent to 
+    #   fraction of EL traversed by each electron
+    
+    # compute z DISTANCE integration boundaries for each time bin
+    z_integ_bound = np.ones((len(TS), num_bins + 1), dtype=np.float32)
     z_integ_bound[:, 0] = el_width + el_sipm_d
-    z_integ_bound[:, 1] = FG[:, 0] * el_width + el_sipm_d
-    z_integ_bound[:, 2] = el_sipm_d
+                    
+    for i in range(num_bins):
+        z_integ_bound[:, i + 1] = z_integ_bound[:, i] - FG[:, i] * el_width
+    
+    if not np.allclose(z_integ_bound[:, -1], el_sipm_d):
+        raise ValueError('final z_integ_bound not el_sipm_d')
     
     # compute gain for electron
     if gain_nf != 0:
@@ -169,23 +184,26 @@ def EL_smear(TS, E, xpos, ypos, xydim, el_width, el_sipm_d, t_gain, gain_nf):
                       size=(len(E),))
         
     else: G = np.ones((len(E),), dtype=np.float32) * t_gain
-
-    for f_ts, fg, e, zbs, g in zip(f_TS, FG, E, z_integ_bound, G):
-       
-        if f_ts != -1: # if -1, photons observed in 1st 
-                       # time bin are received by map 1 
-                       # outside (before) z window
-            # Map 1
-            ev_maps[:, :, f_ts] += SiPM_response(
-                e, xpos, ypos, zbs[:2], fg[0] * g, xydim)
-        try:
-            # Map 2
-            ev_maps[:, :, f_ts + 1] += SiPM_response(
-                e, xpos, ypos, zbs[1:], fg[1] * g, xydim)
-
-        # Outside window in Z
-        except IndexError:
-            if f_ts != zdim - 1: raise
+    
+    # for each electron
+    for f_ts, fg_e, e, zbs, g in zip(f_TS, FG, E, z_integ_bound, G):
+        
+        # for each time bin
+        for b, fg in enumerate(fg_e):
+                        
+            # 0th time bin when f_ts = -1 is outside z-window
+            if not f_ts != -1 or b != 0:
+                
+                try:  
+                    # get electron's contribution to this map
+                    ev_maps[:, :, f_ts + b] = SiPM_response(e, xpos, ypos, 
+                       xydim, zbs[[b, b + 1]], fg)
+               
+                # Outside z-window
+                except IndexError:
+                    
+                    if f_ts >= zdim: 
+                        raise
 
     return ev_maps
 
