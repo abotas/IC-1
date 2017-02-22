@@ -1,6 +1,8 @@
 
 from __future__ import print_function
+
 from glob       import glob
+from time       import time
 
 import sys
 import numpy  as np
@@ -239,6 +241,7 @@ class Anastasia(DetectorResponseCity):
 
                 # Call SiPM_response directly
                 else:
+                    
                     # SiPM maps for an event
                     ev_maps = np.zeros((self.xydim, self.xydim, self.zdim), 
                                        dtype=np.float32)
@@ -255,9 +258,9 @@ class Anastasia(DetectorResponseCity):
 
                         if f_ts < 0: continue # Only relevant for EL photon smearing
 
-                        ev_maps[:, :, f_ts] += SiPM_response(e, xpos, ypos, 
+                        ev_maps[:, :, f_ts] += SiPM_response(e, xpos, ypos, self.xydim,
                             np.array([self.el_sipm_d + self.el_width, self.el_sipm_d], 
-                            dtype=np.float32), g, self.xydim)
+                            dtype=np.float32), g)
 
                 # Add noise in detection probability
                 if self.photon_detection_noise: ev_maps += np.random.poisson(ev_maps)
@@ -283,12 +286,10 @@ def ANASTASIA(argv=sys.argv):
     
     conf = configure(argv)
 
-
     A = Anastasia(
         NEVENTS  = conf['NEVENTS'],
         files_in = glob(conf['FILE_IN']),
-        file_out = conf['FILE_OUT'],
-        )
+        file_out = conf['FILE_OUT'])
 
     A.set_geometry(conf['min_xp'], conf['max_xp']   , conf['min_yp'], 
                    conf['max_yp'], conf['min_zp']   , conf['max_zp'],
@@ -310,7 +311,14 @@ def ANASTASIA(argv=sys.argv):
 
     A.set_output_earray()
 
+    t0 = time()
     A.generate_s2()
+    t1 = time()
+
+    dt = t1 - t0
+
+    print("run {} evts in {} s, time/event = {}".format(
+        A.NEVENTS, dt, dt / A.NEVENTS))
 
 if __name__ == "__main__":
     ANASTASIA(sys.argv)
