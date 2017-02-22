@@ -86,16 +86,27 @@ class Anastasia(DetectorResponseCity):
 
         if len(E) == 0: raise ValueError('E is empty, 0 electrons')
 
-        # Find boarders of window (inclusive) by calculating mean position 
-        # of electrons and adding and subtracting ndim/2 (or maybe median?)
-        xcenter = int(round( np.mean(E[:, 0]), - 1)) # value between 2 center sipms
-        ycenter = int(round( np.mean(E[:, 1]), - 1)) # value between 2 center sipms
-        zcenter = int(round((np.mean(E[:, 2]) - 1) / 2.0) * 2 + 1) 
-
-        xb = np.array([xcenter - 95, xcenter + 95], dtype=np.int16) # mm
-        yb = np.array([ycenter - 95, ycenter + 95], dtype=np.int16) # mm
-        zb = np.array([zcenter - 59, zcenter + 59], dtype=np.int16) # us
-
+        # Find event energy center between SiPMs in x,y,z
+        xcenter = (round(np.mean(E[:, 0]) / float(self.xypitch) - 0.5) + 0.5) * self.xypitch
+        ycenter = (round(np.mean(E[:, 1]) / float(self.xypitch) - 0.5) + 0.5) * self.xypitch
+        zcenter = (round(np.mean(E[:, 2]) / float(self.zpitch ) - 0.5) + 0.5) * self.zpitch
+                
+        # Find window boundaries 
+        xb = np.array(
+            [xcenter - int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0), 
+             xcenter + int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0)], 
+                       dtype=np.int16) # mm
+        
+        yb = np.array(
+            [ycenter - int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0), 
+             ycenter + int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0)], 
+                       dtype=np.int16) # mm
+        
+        zb = np.array(
+            [zcenter - (self.zdim * self.zpitch / 2.0 - self.zpitch / 2.0), 
+             zcenter + (self.zdim * self.zpitch / 2.0 - self.zpitch / 2.0)], 
+                      dtype=np.int16) # us
+        
         # Stuff inside 235mm x 235mm
         if   xb[0] < self.min_xp: xb = xb + (self.min_xp - xb[0])
         elif xb[1] > self.max_xp: xb = xb - (xb[1]  - self.max_xp)
@@ -136,7 +147,7 @@ class Anastasia(DetectorResponseCity):
         xpos = np.array(range(xb[0], xb[1] + self.xypitch, self.xypitch), dtype=np.int32 )
         ypos = np.array(range(yb[0], yb[1] + self.xypitch, self.xypitch), dtype=np.int32)
         zpos = np.array(range(zb[0], zb[1] + int(self.zpitch), int(self.zpitch)), dtype=np.int32)
-
+        
         # Find indices of electrons not in/close to the window
         out_e = (E[:, 0] <= xb[0] - self.d_cut) + (E[:, 0] >= xb[1] + self.d_cut) \
               + (E[:, 1] <= yb[0] - self.d_cut) + (E[:, 1] >= yb[1] + self.d_cut) \
