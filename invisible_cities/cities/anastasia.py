@@ -276,38 +276,41 @@ class Anastasia(DetectorResponseCity):
     
     
     
-conf = read_config_file('/home/abotas/IC-1/invisible_cities/config/anastasia.conf')
+#conf = read_config_file('/home/abotas/IC-1/invisible_cities/config/anastasia.conf')
 
 
-A = Anastasia(
-    NEVENTS  = conf['NEVENTS'],
-    files_in = glob(conf['FILE_IN']),
-    file_out = conf['FILE_OUT'],
-    )
-
-A.set_geometry(conf['min_xp'], conf['max_xp']   , conf['min_yp'], 
-               conf['max_yp'], conf['min_zp']   , conf['max_zp'],
-               conf['xydim'] , conf['zdim']     , conf['xypitch'],
-               conf['zpitch'], conf['el_sipm_d'], conf['el_width'],
-               conf['el_traverse_time'])
-
-A.set_drifting_params(conf['max_energy'],       
-                      conf['electrons_prod_F'], 
-                      conf['reduce_electrons'], 
-                      conf['w_val'] * conf['reduce_electrons'], 
-                      conf['drift_speed'],      
-                      conf['transverse_diffusion'],
-                      conf['longitudinal_diffusion'])
-
-A.set_sensor_response_params(conf['t_gain'], conf['gain_nf'], 
-                             conf['zmear'], 
-                             conf['photon_detection_noise'])
-
-A.set_output_earray()
-
-A.generate_s2()
-
+def ANASTASIA(argv=sys.argv):
     
-      
-        
+    conf = configure(argv)
 
+
+    A = Anastasia(
+        NEVENTS  = conf['NEVENTS'],
+        files_in = glob(conf['FILE_IN']),
+        file_out = conf['FILE_OUT'],
+        )
+
+    A.set_geometry(conf['min_xp'], conf['max_xp']   , conf['min_yp'], 
+                   conf['max_yp'], conf['min_zp']   , conf['max_zp'],
+                   conf['xydim'] , conf['zdim']     , conf['xypitch'],
+                   conf['zpitch'], conf['el_sipm_d'], conf['el_width'],
+                   conf['el_traverse_time'])
+
+    A.set_drifting_params(conf['max_energy'],       
+                          conf['electrons_prod_F'], 
+                          conf['reduce_electrons'], 
+                          conf['w_val'] * conf['reduce_electrons'], 
+                          conf['drift_speed'],      
+                          conf['transverse_diffusion'],
+                          conf['longitudinal_diffusion'])
+
+    A.set_sensor_response_params(conf['t_gain'], conf['gain_nf'], 
+                                 conf['zmear'], 
+                                 conf['photon_detection_noise'])
+
+    A.set_output_earray()
+
+    A.generate_s2()
+
+if __name__ == "__main__":
+    ANASTASIA(sys.argv)
