@@ -60,15 +60,17 @@ class Anastasia(DetectorResponseCity):
         filters    = tb.Filters(complib='blosc', complevel=9, shuffle=False)
         atom       = tb.Atom.from_dtype(np.dtype('Float32'))
         tmaps      = f_out.create_earray(f_out.root, 'maps', atom, 
-                                     (0, 20, 20, 60), filters=filters) 
+                                     (0, self.xydim, self.xydim, self.zdim), 
+                                     filters=filters) 
         self.tmaps = tmaps
         self.f_out = f_out
         
     def sliding_window(self, E):
         """
-        sliding window finds a 20x20x60 window of sipms that have detected
-        photons in this event. the window is centered around the mean 
-        position of E and then pushed into NEW (or desired) geometry.
+        sliding window finds a xydim*xypitch by xydim*xypitch by zdim * zpitch
+        window of sipms that have detected photons in this event. 
+        the window is centered around the mean position of E and then 
+        pushed into NEW (or desired) geometry.
 
         arguments: 
         E, all the electrons in one event
@@ -146,7 +148,7 @@ class Anastasia(DetectorResponseCity):
         # increasing x, increasing y, increasing z
         xpos = np.array(range(xb[0], xb[1] + self.xypitch, self.xypitch), dtype=np.int32 )
         ypos = np.array(range(yb[0], yb[1] + self.xypitch, self.xypitch), dtype=np.int32)
-        zpos = np.array(range(zb[0], zb[1] + int(self.zpitch), int(self.zpitch)), dtype=np.int32)
+        zpos = np.arange(zb[0], zb[1], self.zpitch, dtype=np.float32)
         
         # Find indices of electrons not in/close to the window
         out_e = (E[:, 0] <= xb[0] - self.d_cut) + (E[:, 0] >= xb[1] + self.d_cut) \
@@ -225,9 +227,7 @@ class Anastasia(DetectorResponseCity):
                     else: raise
 
                 # z in units of time bin
-                TS  = (electrons[:, 2] - zpos[0]) / self.zpitch 
-                if (TS < -1).any():
-                    raise ValueError('Electrons are outside z window')    
+                TS  = (electrons[:, 2] - zpos[0]) / self.zpitch     
 
                 # Use EL_smear to get SiPM maps
                 if self.zmear: 
@@ -253,7 +253,7 @@ class Anastasia(DetectorResponseCity):
                     # Sum SiPM response for each electron
                     for f_ts, e, g in zip(np.array(np.floor(TS), dtype=np.int8), electrons, G):
 
-                        if f_ts < 0: continue # Only relevant for zmear
+                        if f_ts < 0: continue # Only relevant for EL photon smearing
 
                         ev_maps[:, :, f_ts] += SiPM_response(e, xpos, ypos, 
                             np.array([self.el_sipm_d + self.el_width, self.el_sipm_d], 
@@ -264,17 +264,15 @@ class Anastasia(DetectorResponseCity):
 
                 # Save the event's maps
                 self.tmaps.append([ev_maps])
-                print(np.argmax(ev_maps), np.max(ev_maps))
-                print(np.mean(ev_maps))
 
                 accepted_events += 1
                 if accepted_events == self.NEVENTS: break
 
             f_mc.close()
-            
+        print('Discarded ' + str(discarded_events) + ' events')    
         print(self.f_out)
         self.f_out.close()
-      
+        
     
     
     
@@ -295,7 +293,8 @@ A.set_geometry(conf['min_xp'], conf['max_xp']   , conf['min_yp'],
 
 A.set_drifting_params(conf['max_energy'],       
                       conf['electrons_prod_F'], 
-                      conf['reduce_electrons'], conf['w_val'], 
+                      conf['reduce_electrons'], 
+                      conf['w_val'] * conf['reduce_electrons'], 
                       conf['drift_speed'],      
                       conf['transverse_diffusion'],
                       conf['longitudinal_diffusion'])

@@ -127,9 +127,11 @@ def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     DX2 = np.array([dx2 for i in range(xydim)], dtype=np.float32).T
     DY2 = np.array([dy2 for i in range(xydim)], dtype=np.float32)
     
-    return np.array(gain / (4.0 * (z_bound[0] - z_bound[1])) \
+    return np.array(
+           gain / (4.0 * (z_bound[0] - z_bound[1])) \
            * (1.0 / np.sqrt(DX2 + DY2 + z_bound[1]**2) \
-           -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)), dtype=np.float32)
+           -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)), 
+           dtype=np.float32)
     
 def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
              el_traverse_time, el_width, el_sipm_d, t_gain, gain_nf):
@@ -191,9 +193,8 @@ def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
         # for each time bin
         for b, fg in enumerate(fg_e):
                         
-            # 0th time bin when f_ts = -1 is outside z-window
-            if not f_ts != -1 or b != 0:
-                
+            # some electrons have bins before z window start
+            if f_ts + b >= 0 and not np.isclose(zbs[b], zbs[b + 1]):
                 try:  
                     # get electron's contribution to this map
                     ev_maps[:, :, f_ts + b] = SiPM_response(e, xpos, ypos, 
@@ -201,8 +202,7 @@ def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
                
                 # Outside z-window
                 except IndexError:
-                    
-                    if f_ts >= zdim: 
+                    if f_ts > zdim:
                         raise
 
     return ev_maps
