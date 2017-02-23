@@ -7,7 +7,7 @@
 import numpy  as np
 import tables as tb
 
-def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, electrons_prod_F):
+def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_F):
     """
     arguments: 
     pytable for 1 file of signal/background events,  
@@ -52,7 +52,7 @@ def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, 
         # e_indf - e_ind is num drifting electrons from hit
         e_indf = e_ind + int(round(row['hit_energy'] * 10**6 / w_val))
         
-        # Low energy hit, reduce electrons is high
+        # Hit does not have enough energy to produce a grouped electron
         if e_indf == e_ind: continue
         
         # add fluctuations in num drifting electrons produced
@@ -68,10 +68,10 @@ def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, 
         E[e_ind: e_indf] = row['hit_position'] 
         
         # Add diffusion
-        E[e_ind: e_indf] = diffuse_electrons(E[e_ind: e_indf], t_diff, l_diff)
+        #E[e_ind: e_indf] = diffuse_electrons(E[e_ind: e_indf], t_diff, l_diff)
 
         # Time when electrons arrive at EL
-        E[e_ind: e_indf, 2] /= drift_speed
+        #E[e_ind: e_indf, 2] /= drift_speed
                                              
         e_ind = e_indf
                 
@@ -79,38 +79,37 @@ def drift_electrons(ptab, nrow, max_energy, t_diff, l_diff, drift_speed, w_val, 
     return (E, -1, True)
 
 
-def diffuse_electrons(E_h, t_diff, l_diff):
+def diffuse_electrons(E, drift_speed, t_diff, l_diff):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m) 
-    Note, diffuse electrons is called for each hit, since
-    each hit produces a variable number of electrons and has
-    different coordinates. 
-    
-    E_h are elecrons for one hit
     """    
     
+    
     # z distance in meters
-    z_sqdist_from_el = np.sqrt(E_h[:, 2] / float(1000))
-    num_E_h = len(E_h)
+    z_sqdist_from_el = np.sqrt(E[:, 2] / float(1000))
+    
+    num_E = len(E)
     if t_diff > 0:
         
         # mean=0, sigma=lat_diff * sqrt(m) 
         lateral_drift = np.random.normal(
             scale=t_diff * np.array([z_sqdist_from_el, z_sqdist_from_el], dtype=np.float32).T, 
-            size=(num_E_h, 2))
+            size=(num_E, 2))
 
-        E_h[:, :2] += lateral_drift
+        E[:, :2] += lateral_drift
     
     if l_diff > 0:
         longitudinal_drift = np.random.normal(
             scale=l_diff * z_sqdist_from_el, 
-            size=(num_E_h,))
+            size=(num_E,))
 
-        E_h[:, 2] += longitudinal_drift
+        E[:, 2] += longitudinal_drift
+        
+    E[:, 2] /= drift_speed
     
     # Note not entirely necessary since mod in place
-    return E_h
+    return E
 
 def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     """

@@ -14,7 +14,7 @@ from invisible_cities.cities.base_cities import DetectorResponseCity
 from invisible_cities.core.configure  import configure, print_configuration, \
     read_config_file
     
-from invisible_cities.core.detector_response_functions import drift_electrons, \
+from invisible_cities.core.detector_response_functions import generate_ionization_electrons, \
      diffuse_electrons, bin_EL, SiPM_response
     
 class Anastasia(DetectorResponseCity):
@@ -211,10 +211,15 @@ class Anastasia(DetectorResponseCity):
             while not file_explored:
 
                 # Call drift_electrons
-                (electrons, nrow, file_explored) = drift_electrons(
-                    ptab, nrow, self.max_energy, self.transverse_diffusion, 
-                    self.longitudinal_diffusion, self.drift_speed, self.w_val, 
+                (electrons, nrow, file_explored) = generate_ionization_electrons(
+                    ptab, nrow, self.max_energy, self.w_val, 
                     self.electrons_prod_F)
+                
+                # Call diffuse_electrons
+                electrons = diffuse_electrons(electrons  , self.drift_speed, 
+                                              self.transverse_diffusion, 
+                                              self.longitudinal_diffusion)
+                
 
                 # Find appropriate window
                 try: (electrons, xpos, ypos, zpos) = self.sliding_window(electrons)   
