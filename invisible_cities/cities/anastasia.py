@@ -37,7 +37,6 @@ class Anastasia(DetectorResponseCity):
                  
                  # Parameters added at this level
                  NEVENTS = 0,
-                 stuff_NEW = False,
                  window_energy_threshold = 0.05,
                  d_cut = 15 # mm
                 ):
@@ -49,7 +48,6 @@ class Anastasia(DetectorResponseCity):
                                       nprint     = nprint)
         
         self.NEVENTS = NEVENTS
-        self.stuff_NEW = stuff_NEW
         self.window_energy_threshold = window_energy_threshold
         self.d_cut = d_cut
         
@@ -117,28 +115,6 @@ class Anastasia(DetectorResponseCity):
         if   yb[0] < self.min_yp: yb = yb + (self.min_yp - yb[0])
         elif yb[1] > self.max_yp: yb = yb - (yb[1]  - self.max_yp)
 
-        # Put inside NEW geometry
-        if self.stuff_NEW: 
-
-            # Eliminate the four 80x20 corners
-            if xb[0] < -155:
-                if y[0] < -195:
-                    xb = xb + (-155 - xb[0])
-                    yb = yb + (-195 - yb[0])
-                elif y[1] > 195:
-                    xb = xb + (-155 - xb[0])
-                    yb = yb - (yb[1] - 195)
-            elif xb[1] > 155:
-                if yb[0] < -195:
-                    xb = xb - (xb[1] - 155)
-                    yb = yb + (-195 - yb[0])
-                elif yb[1] > 195:
-                    xb = xb - (xb[1] - 155)
-                    yb = yb - (yb[1] - 195)
-
-            # TODO: Finish stuffing inside NEW geometry
-            # but it's a little more complicated
-
         # Correct time
         if zb[0] < self.min_zp:
             zb -= zb[0]
@@ -148,7 +124,7 @@ class Anastasia(DetectorResponseCity):
         # Get SiPM positions, adding pitch because boarders are inclusive
         # Notice maps will be organized as follows:
         # increasing x, increasing y, increasing z
-        xpos = np.array(range(xb[0], xb[1] + self.xypitch, self.xypitch), dtype=np.int32 )
+        xpos = np.array(range(xb[0], xb[1] + self.xypitch, self.xypitch), dtype=np.int32)
         ypos = np.array(range(yb[0], yb[1] + self.xypitch, self.xypitch), dtype=np.int32)
         zpos = np.arange(zb[0], zb[1], self.zpitch, dtype=np.float32)
         
@@ -220,7 +196,6 @@ class Anastasia(DetectorResponseCity):
                                               self.transverse_diffusion, 
                                               self.longitudinal_diffusion)
                 
-
                 # Find appropriate window
                 try: (electrons, xpos, ypos, zpos) = self.sliding_window(electrons)   
 
@@ -277,6 +252,7 @@ class Anastasia(DetectorResponseCity):
                 if accepted_events == self.NEVENTS: break
 
             f_mc.close()
+            
         print('Discarded ' + str(discarded_events) + ' events')    
         print(self.f_out)
         self.f_out.close()
@@ -310,7 +286,7 @@ def ANASTASIA(argv=sys.argv):
                           conf['transverse_diffusion'],
                           conf['longitudinal_diffusion'])
 
-    A.set_sensor_response_params(conf['t_gain'], conf['gain_nf'], 
+    A.set_sensor_response_params(conf['t_gain'] * conf['reduce_electrons'], conf['gain_nf'], 
                                  conf['zmear'], 
                                  conf['photon_detection_noise'])
 
