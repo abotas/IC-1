@@ -111,6 +111,86 @@ def diffuse_electrons(E, drift_speed, t_diff, l_diff):
     # Note not entirely necessary since mod in place
     return E
 
+    
+def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
+                   min_yp, max_yp, min_zp, max_zp, d_cut, el_traverse_time,
+                   drift_speed, window_energy_threshold):
+    """
+    sliding window finds a xydim*xypitch by xydim*xypitch by zdim * zpitch
+    window of sipms that have detected photons in this event. 
+    the window is centered around the mean position of E and then 
+    pushed into NEW (or desired) geometry.
+    arguments: 
+    E, all the electrons in one event
+    returns:
+    'window cut' if event does not fit in window, else
+    returns:
+    E[in_e], a subarray of E, containing all the electrons in or 
+    close to the sliding window. 
+    xpos, positions of sipms in x
+    ypos, positions of sipms in y
+    zpos, times of time slices
+    """
+
+    if len(E) == 0: raise ValueError('E is empty, 0 electrons')
+
+    # Find event energy center between SiPMs in x,y,z
+    xcenter = (round(np.mean(E[:, 0]) / float(xypitch) - 0.5) + 0.5) * xypitch
+    ycenter = (round(np.mean(E[:, 1]) / float(xypitch) - 0.5) + 0.5) * xypitch
+    zcenter = (round(np.mean(E[:, 2]) / float(zpitch ) - 0.5) + 0.5) * zpitch
+            
+    # Find window boundaries 
+    xb = np.array(
+        [xcenter - int(xydim * xypitch / 2.0 - xypitch / 2.0), 
+         xcenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)], 
+                   dtype=np.int16) # mm
+    
+    yb = np.array(
+        [ycenter - int(xydim * xypitch / 2.0 - xypitch / 2.0), 
+         ycenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)], 
+                   dtype=np.int16) # mm
+    
+    zb = np.array(
+        [zcenter - (zdim * zpitch / 2.0 - zpitch / 2.0), 
+         zcenter + (zdim * zpitch / 2.0 - zpitch / 2.0)], 
+                  dtype=np.int16) # us
+    
+    # Stuff inside 235mm x 235mm
+    if   xb[0] < min_xp: xb = xb + (min_xp - xb[0])
+    elif xb[1] > max_xp: xb = xb - (xb[1]  - max_xp)
+    if   yb[0] < min_yp: yb = yb + (min_yp - yb[0])
+    elif yb[1] > max_yp: yb = yb - (yb[1]  - max_yp)
+
+    # Correct time
+    if zb[0] < min_zp:
+        zb -= zb[0]
+    elif zb[1] > max_zp / drift_speed:
+        zb = zb - (zb[1] - np.ceil(max_zp / drift_speed)).astype(np.int32)
+
+    # Get SiPM positions, adding pitch because boarders are inclusive
+    # Notice maps will be organized as follows:
+    # increasing x, increasing y, increasing z
+    xpos = np.array(range(xb[0], xb[1] + xypitch, xypitch), dtype=np.int32)
+    ypos = np.array(range(yb[0], yb[1] + xypitch, xypitch), dtype=np.int32)
+    zpos = np.arange(zb[0], zb[1], zpitch, dtype=np.float32)
+    
+    # Find indices of electrons not in/close to the window
+    out_e = (E[:, 0] <= xb[0] - d_cut) + (E[:, 0] >= xb[1] + d_cut) \
+          + (E[:, 1] <= yb[0] - d_cut) + (E[:, 1] >= yb[1] + d_cut) \
+          + (E[:, 2] <= zb[0] - el_traverse_time) \
+          + (E[:, 2] >= zb[1] + zpitch)
+
+    lect = float(len(E))
+
+    # If more than 5% of energy outside window, 
+    if (np.sum(out_e) / float(len(E))) > window_energy_threshold:
+
+        # Discard evt
+        return 'Window Cut'
+
+    # Else return electrons in/near window
+    else: return (E[np.logical_not(out_e)], xpos, ypos, zpos)        
+
 def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     """
     # All photons are emitted from the point where electron
@@ -132,7 +212,7 @@ def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)), 
            dtype=np.float32)
     
-def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
+def bin_EL(E, xpos, ypos, zpos, xydim, zdim, zpitch,
              el_traverse_time, el_width, el_sipm_d, t_gain, gain_nf):
     """
     arguments:
@@ -154,14 +234,18 @@ def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
     # num maps that will receive photons form each electron
     num_bins = max(2, int(el_traverse_time / zpitch) + 1)
     
-    # Fraction of photons detected in each time bin 
+    # z in units of time bin
+    TS = (E[:, 2] - zpos[0]) / zpitch 
+    
+    # Fraction of photons detected in each time bin
     FG   = np.empty((len(TS), num_bins), dtype=np.float32)
     f_TS = np.array(np.floor(TS), dtype=np.int8) # int16 if zdim > 127!
     
     # Compute the fraction of gain in each relevant map
     FG[:,     0] = (1 + f_TS - TS) * zpitch / float(el_traverse_time)
     FG[:, 1: -1] = zpitch / float(el_traverse_time) # all the same
-    FG[:,    -1] = 1 - FG[:, 0] \
+    FG[:,    -1] = 1 \
+                   - FG[:, 0] \
                    - (num_bins - 2) * zpitch / float(el_traverse_time)
                     
     #** Note fraction of gain in each map is equivalent to fraction of 
@@ -201,8 +285,7 @@ def bin_EL(TS, E, xpos, ypos, xydim, zdim, zpitch,
                
                 # Outside z-window
                 except IndexError:
-                    if f_ts > zdim:
-                        raise
+                    if f_ts > zdim: raise
 
     return ev_maps
 

@@ -12,10 +12,9 @@ sys.path.append("/home/abotas/IC-1")
 
 from invisible_cities.cities.base_cities import DetectorResponseCity
 from invisible_cities.core.configure  import configure, print_configuration, \
-    read_config_file
-    
+    read_config_file  
 from invisible_cities.core.detector_response_functions import generate_ionization_electrons, \
-     diffuse_electrons, bin_EL, SiPM_response
+     diffuse_electrons, sliding_window, bin_EL, SiPM_response
     
 class Anastasia(DetectorResponseCity):
     """
@@ -56,94 +55,14 @@ class Anastasia(DetectorResponseCity):
         Define location for appending SiPM maps for each event
         """
 
-        f_out      = tb.open_file(self.output_file, 'w')
-        filters    = tb.Filters(complib='blosc', complevel=9, shuffle=False)
-        atom       = tb.Atom.from_dtype(np.dtype('Float32'))
-        tmaps      = f_out.create_earray(f_out.root, 'maps', atom, 
+        f_out   = tb.open_file(self.output_file, 'w')
+        filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
+        atom    = tb.Atom.from_dtype(np.dtype('Float32'))
+        tmaps   = f_out.create_earray(f_out.root, 'maps', atom, 
                                      (0, self.xydim, self.xydim, self.zdim), 
                                      filters=filters) 
         self.tmaps = tmaps
         self.f_out = f_out
-        
-    def sliding_window(self, E):
-        """
-        sliding window finds a xydim*xypitch by xydim*xypitch by zdim * zpitch
-        window of sipms that have detected photons in this event. 
-        the window is centered around the mean position of E and then 
-        pushed into NEW (or desired) geometry.
-
-        arguments: 
-        E, all the electrons in one event
-
-        returns:
-        'window cut' if event does not fit in window, else
-
-        returns:
-        E[in_e], a subarray of E, containing all the electrons in or 
-        close to the sliding window. 
-        xpos, positions of sipms in x
-        ypos, positions of sipms in y
-        zpos, times of time slices
-        """
-
-        if len(E) == 0: raise ValueError('E is empty, 0 electrons')
-
-        # Find event energy center between SiPMs in x,y,z
-        xcenter = (round(np.mean(E[:, 0]) / float(self.xypitch) - 0.5) + 0.5) * self.xypitch
-        ycenter = (round(np.mean(E[:, 1]) / float(self.xypitch) - 0.5) + 0.5) * self.xypitch
-        zcenter = (round(np.mean(E[:, 2]) / float(self.zpitch ) - 0.5) + 0.5) * self.zpitch
-                
-        # Find window boundaries 
-        xb = np.array(
-            [xcenter - int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0), 
-             xcenter + int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0)], 
-                       dtype=np.int16) # mm
-        
-        yb = np.array(
-            [ycenter - int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0), 
-             ycenter + int(self.xydim * self.xypitch / 2.0 - self.xypitch / 2.0)], 
-                       dtype=np.int16) # mm
-        
-        zb = np.array(
-            [zcenter - (self.zdim * self.zpitch / 2.0 - self.zpitch / 2.0), 
-             zcenter + (self.zdim * self.zpitch / 2.0 - self.zpitch / 2.0)], 
-                      dtype=np.int16) # us
-        
-        # Stuff inside 235mm x 235mm
-        if   xb[0] < self.min_xp: xb = xb + (self.min_xp - xb[0])
-        elif xb[1] > self.max_xp: xb = xb - (xb[1]  - self.max_xp)
-        if   yb[0] < self.min_yp: yb = yb + (self.min_yp - yb[0])
-        elif yb[1] > self.max_yp: yb = yb - (yb[1]  - self.max_yp)
-
-        # Correct time
-        if zb[0] < self.min_zp:
-            zb -= zb[0]
-        elif zb[1] > self.max_zp / self.drift_speed:
-            zb = zb - (zb[1] - np.ceil(self.max_zp / self.drift_speed)).astype(np.int32)
-
-        # Get SiPM positions, adding pitch because boarders are inclusive
-        # Notice maps will be organized as follows:
-        # increasing x, increasing y, increasing z
-        xpos = np.array(range(xb[0], xb[1] + self.xypitch, self.xypitch), dtype=np.int32)
-        ypos = np.array(range(yb[0], yb[1] + self.xypitch, self.xypitch), dtype=np.int32)
-        zpos = np.arange(zb[0], zb[1], self.zpitch, dtype=np.float32)
-        
-        # Find indices of electrons not in/close to the window
-        out_e = (E[:, 0] <= xb[0] - self.d_cut) + (E[:, 0] >= xb[1] + self.d_cut) \
-              + (E[:, 1] <= yb[0] - self.d_cut) + (E[:, 1] >= yb[1] + self.d_cut) \
-              + (E[:, 2] <= zb[0] - self.el_traverse_time) \
-              + (E[:, 2] >= zb[1] + self.zpitch)
-
-        lect = float(len(E))
-
-        # If more than 5% of energy outside window, 
-        if (np.sum(out_e) / float(len(E))) > self.window_energy_threshold:
-
-            # Discard evt
-            return 'Window Cut'
-
-        # Else return electrons in/near window
-        else: return (E[np.logical_not(out_e)], xpos, ypos, zpos)
         
 
     def generate_s2(self):
@@ -181,7 +100,7 @@ class Anastasia(DetectorResponseCity):
             ptab = f_mc.root.MC.MCTracks
 
             file_explored = False
-            nrow = 0 # need to track current row in pytable since events are not separated
+            nrow = 0 # track current row in pytable since events are not separated
 
             # Iterates over each event
             while not file_explored:
@@ -192,35 +111,46 @@ class Anastasia(DetectorResponseCity):
                     self.electrons_prod_F)
                 
                 # Call diffuse_electrons
-                electrons = diffuse_electrons(electrons  , self.drift_speed, 
+                electrons = diffuse_electrons(electrons, 
+                                              self.drift_speed, 
                                               self.transverse_diffusion, 
                                               self.longitudinal_diffusion)
                 
-                # Find appropriate window
-                try: (electrons, xpos, ypos, zpos) = self.sliding_window(electrons)   
-
+                # Find sliding 3d window of anode centered around event
+                EPOS = sliding_window(electrons, self.xydim, self.zdim, 
+                                      self.xypitch, self.zpitch, self.min_xp, 
+                                      self.max_xp, self.min_yp, self.max_yp, 
+                                      self.min_zp, self.max_zp, self.d_cut, 
+                                      self.el_traverse_time, self.drift_speed,   
+                                      self.window_energy_threshold) 
+                
+                # Unpack sliding window
+                try: (electrons, xpos, ypos, zpos) =  EPOS
+                
+                # Or discard
                 except ValueError:  
-
-                    # Or discard
-                    if self.sliding_window(electrons) == 'Window Cut':
+                    if EPOS ==  'Window Cut':
                         discarded_events += 1
                         continue
-
-                    else: raise
-
-                # z in units of time bin
-                TS  = (electrons[:, 2] - zpos[0]) / self.zpitch     
+                    else: raise    
 
                 # Use EL_smear to get SiPM maps
                 if self.zmear: 
-                    ev_maps = bin_EL(TS, electrons, xpos, ypos, 
-                                       self.xydim, self.zdim, self.zpitch,
-                                       self.el_traverse_time,
-                                       self.el_width, self.el_sipm_d, 
-                                       self.t_gain, self.gain_nf)
+                    ev_maps = bin_EL(electrons, xpos, ypos, zpos,
+                                     self.xydim, 
+                                     self.zdim, 
+                                     self.zpitch,
+                                     self.el_traverse_time,
+                                     self.el_width, 
+                                     self.el_sipm_d, 
+                                     self.t_gain, 
+                                     self.gain_nf)
 
                 # Call SiPM_response directly
                 else:
+                    
+                    # z in units of time bin
+                    TS = (electrons[:, 2] - zpos[0]) / self.zpitch 
                     
                     # SiPM maps for an event
                     ev_maps = np.zeros((self.xydim, self.xydim, self.zdim), 
@@ -256,21 +186,15 @@ class Anastasia(DetectorResponseCity):
         print('Discarded ' + str(discarded_events) + ' events')    
         print(self.f_out)
         self.f_out.close()
-        
-    
-    
-    
-#conf = read_config_file('/home/abotas/IC-1/invisible_cities/config/anastasia.conf')
-
 
 def ANASTASIA(argv=sys.argv):
     
     conf = configure(argv)
 
     A = Anastasia(
-        NEVENTS  = conf['NEVENTS'],
+        NEVENTS  =      conf['NEVENTS'],
         files_in = glob(conf['FILE_IN']),
-        file_out = conf['FILE_OUT'])
+        file_out =      conf['FILE_OUT'])
 
     A.set_geometry(conf['min_xp'], conf['max_xp']   , conf['min_yp'], 
                    conf['max_yp'], conf['min_zp']   , conf['max_zp'],
@@ -286,20 +210,21 @@ def ANASTASIA(argv=sys.argv):
                           conf['transverse_diffusion'],
                           conf['longitudinal_diffusion'])
 
-    A.set_sensor_response_params(conf['t_gain'] * conf['reduce_electrons'], conf['gain_nf'], 
+    A.set_sensor_response_params(conf['t_gain'] * conf['reduce_electrons'], 
+                                 conf['gain_nf'], 
                                  conf['zmear'], 
                                  conf['photon_detection_noise'])
 
     A.set_output_earray()
 
-    t0 = time()
-    A.generate_s2()
-    t1 = time()
-
+    t0 = time(); A.generate_s2(); t1 = time();
     dt = t1 - t0
-
+    
     print("run {} evts in {} s, time/event = {}".format(
         A.NEVENTS, dt, dt / A.NEVENTS))
 
 if __name__ == "__main__":
     ANASTASIA(sys.argv)
+
+    
+#conf = read_config_file('/home/abotas/IC-1/invisible_cities/config/anastasia.conf')
