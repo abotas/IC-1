@@ -11,9 +11,12 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
     """
     arguments: 
     pytable for 1 file of signal/background events,  
-    current row, since there are many rows/event
-    t_diff, num mm/sqrt(m) of transverse diffusion
-    l_diff, num mm/sqrt(m) of longitudinal diffusion
+    current row, since there are many rows/event.
+    max_energy is the maximum energy an event might have
+    w_val is w value
+    electrons_prod_F is the Fano factor multiplied by the mean
+    number of electrons that should be produced for a hit
+    of a particular energy to the the variance of fluctuation
     
     returns: 
     E, data for all electrons in one event in a numpy ndarray 
@@ -30,7 +33,6 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
     # Approximate number of electrons + some padding
     E = np.zeros((int(round(max_energy / w_val)), 3), 
                          dtype=np.float32)
-    
     lect = len(E)
     
     # Track of position in electrons
@@ -41,14 +43,13 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
     
         # Note: event_indx not always consecutive
         if row['event_indx'] > current_event:
-                
+
             # Delete excess space in electrons
-            return (E[:e_ind], row.nrow, False)
+            return (E[:e_indf], row.nrow, False)
         
         elif row['event_indx'] < current_event:
             raise ValueError('current_event skipped or poorly tracked')
-                
-        
+                    
         # e_indf - e_ind is num drifting electrons from hit
         e_indf = e_ind + int(round(row['hit_energy'] * 10**6 / w_val))
         
@@ -59,24 +60,17 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
         if electrons_prod_F > 0:
             e_indf += int(np.round(np.random.normal(
                 scale=np.sqrt((e_indf - e_ind) * electrons_prod_F))))
-                
-            
+                 
         # Throw error if e_indf greater than electrons len
         if e_indf >= lect: raise ValueError('electrons is not long enough')
         
         # Initial position of electrons 
         E[e_ind: e_indf] = row['hit_position'] 
-        
-        # Add diffusion
-        #E[e_ind: e_indf] = diffuse_electrons(E[e_ind: e_indf], t_diff, l_diff)
-
-        # Time when electrons arrive at EL
-        #E[e_ind: e_indf, 2] /= drift_speed
                                              
         e_ind = e_indf
                 
-    # Return electrons and start row for next event 
-    return (E, -1, True)
+    # Event recorded and file exhausted.
+    return (E[:e_indf], -1, True)
 
 
 def diffuse_electrons(E, drift_speed, t_diff, l_diff):
@@ -84,8 +78,6 @@ def diffuse_electrons(E, drift_speed, t_diff, l_diff):
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m) 
     """    
-    
-    
     # z distance in meters
     z_sqdist_from_el = np.sqrt(E[:, 2] / float(1000))
     
@@ -94,9 +86,11 @@ def diffuse_electrons(E, drift_speed, t_diff, l_diff):
         
         # mean=0, sigma=lat_diff * sqrt(m) 
         lateral_drift = np.random.normal(
-            scale=t_diff * np.array([z_sqdist_from_el, z_sqdist_from_el], dtype=np.float32).T, 
+            scale=t_diff * np.array(
+                [z_sqdist_from_el, z_sqdist_from_el], 
+                 dtype=np.float32).T, 
             size=(num_E, 2))
-
+        
         E[:, :2] += lateral_drift
     
     if l_diff > 0:
@@ -110,7 +104,6 @@ def diffuse_electrons(E, drift_speed, t_diff, l_diff):
     
     # Note not entirely necessary since mod in place
     return E
-
     
 def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
                    min_yp, max_yp, min_zp, max_zp, d_cut, el_traverse_time,
@@ -135,21 +128,19 @@ def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
     if len(E) == 0: raise ValueError('E is empty, 0 electrons')
 
     # Find event energy center between SiPMs in x,y,z
-    xcenter = (round(np.mean(E[:, 0]) / float(xypitch) - 0.5) + 0.5) * xypitch
-    ycenter = (round(np.mean(E[:, 1]) / float(xypitch) - 0.5) + 0.5) * xypitch
-    zcenter = (round(np.mean(E[:, 2]) / float(zpitch ) - 0.5) + 0.5) * zpitch
+    xcenter = round(np.mean(E[:, 0]) / float(xypitch)) * xypitch
+    ycenter = round(np.mean(E[:, 1]) / float(xypitch)) * xypitch
+    zcenter = round(np.mean(E[:, 2]) / float(zpitch )) * zpitch
             
     # Find window boundaries 
     xb = np.array(
         [xcenter - int(xydim * xypitch / 2.0 - xypitch / 2.0), 
          xcenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)], 
                    dtype=np.int16) # mm
-    
     yb = np.array(
         [ycenter - int(xydim * xypitch / 2.0 - xypitch / 2.0), 
          ycenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)], 
                    dtype=np.int16) # mm
-    
     zb = np.array(
         [zcenter - (zdim * zpitch / 2.0 - zpitch / 2.0), 
          zcenter + (zdim * zpitch / 2.0 - zpitch / 2.0)], 
@@ -167,12 +158,10 @@ def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
     elif zb[1] > max_zp / drift_speed:
         zb = zb - (zb[1] - np.ceil(max_zp / drift_speed)).astype(np.int32)
 
-    # Get SiPM positions, adding pitch because boarders are inclusive
-    # Notice maps will be organized as follows:
-    # increasing x, increasing y, increasing z
+    # Get SiPM positions
     xpos = np.array(range(xb[0], xb[1] + xypitch, xypitch), dtype=np.int32)
     ypos = np.array(range(yb[0], yb[1] + xypitch, xypitch), dtype=np.int32)
-    zpos = np.arange(zb[0], zb[1], zpitch, dtype=np.float32)
+    zpos = np.arange(zb[0], zb[1] + zpitch, zpitch, dtype=np.float32)
     
     # Find indices of electrons not in/close to the window
     out_e = (E[:, 0] <= xb[0] - d_cut) + (E[:, 0] >= xb[1] + d_cut) \
@@ -182,10 +171,8 @@ def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
 
     lect = float(len(E))
 
-    # If more than 5% of energy outside window, 
-    if (np.sum(out_e) / float(len(E))) > window_energy_threshold:
-
-        # Discard evt
+    # If more than 5% of energy outside window, discard evt
+    if (np.sum(out_e) / float(len(E))) >= window_energy_threshold:
         return 'Window Cut'
 
     # Else return electrons in/near window
@@ -249,8 +236,7 @@ def bin_EL(E, xpos, ypos, zpos, xydim, zdim, zpitch,
                    - (num_bins - 2) * zpitch / float(el_traverse_time)
                     
     #** Note fraction of gain in each map is equivalent to fraction of 
-    #   time photons received by each map which is equivalent to 
-    #   fraction of EL traversed by each electron
+    #   of EL traversed by electron during time bin associated with map
     
     # compute z DISTANCE integration boundaries for each time bin
     z_integ_bound = np.ones((len(TS), num_bins + 1), dtype=np.float32)

@@ -129,7 +129,7 @@ class Anastasia(DetectorResponseCity):
                 
                 # Or discard
                 except ValueError:  
-                    if EPOS ==  'Window Cut':
+                    if EPOS == 'Window Cut':
                         discarded_events += 1
                         continue
                     else: raise    
