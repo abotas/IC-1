@@ -8,8 +8,6 @@ import sys
 import numpy  as np
 import tables as tb
 
-# sys.path.append("/home/abotas/IC-1")
-
 from invisible_cities.cities.base_cities import DetectorResponseCity
 from invisible_cities.core.configure  import configure, print_configuration, \
     read_config_file
@@ -54,7 +52,6 @@ class Anastasia(DetectorResponseCity):
         """
         Define location for appending SiPM maps for each event
         """
-
         f_out   = tb.open_file(self.output_file, 'w')
         filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
         atom    = tb.Atom.from_dtype(np.dtype('Float32'))
@@ -170,9 +167,12 @@ class Anastasia(DetectorResponseCity):
 
                         if f_ts < 0: continue # Only relevant for EL photon smearing
 
-                        ev_maps[:, :, f_ts] += SiPM_response(e, xpos, ypos, self.xydim,
-                            np.array([self.el_sipm_d + self.el_width, self.el_sipm_d],
+
+                        ev_maps[:, :, f_ts] += SiPM_response(
+                            e, xpos, ypos, self.xydim, np.array(
+                            [self.el_sipm_d + self.el_width, self.el_sipm_d],
                             dtype=np.float32), g)
+
 
                 # Add noise in detection probability
                 if self.photon_detection_noise: ev_maps += np.random.poisson(ev_maps)
