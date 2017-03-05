@@ -161,10 +161,12 @@ class Anastasia(DetectorResponseCity):
                             scale=np.sqrt(self.t_gain * self.gain_nf), 
                             size=(len(electrons),))
                     else:
-                        G = np.ones((len(electrons),), dtype=np.float32) * self.t_gain
+                        G = np.ones((len(electrons),), 
+                                    dtype=np.float32) * self.t_gain
 
                     # Sum SiPM response for each electron
-                    for f_ts, e, g in zip(np.array(np.floor(TS), dtype=np.int8), electrons, G):
+                    for f_ts, e, g in zip(np.array(np.floor(TS), 
+                                                   dtype=np.int8), electrons, G):
 
                         if f_ts < 0: continue # Only relevant for EL photon smearing
 
