@@ -282,14 +282,19 @@ def bin_EL(E, xpos, ypos, zpos, xydim, zdim, zpitch,
     FG   = np.empty((len(TS), num_bins), dtype=np.float32)
     f_TS = np.array(np.floor(TS), dtype=np.int8) # int16 if zdim > 127!
 
-    # Compute the fraction of gain in each relevant map
-    FG[:,     0] = np.minimum(
-                   (1 + f_TS - TS) * zpitch, el_traverse_time) \
-                   / float(el_traverse_time)
-    FG[:, 1: -1] = zpitch / float(el_traverse_time) # all the same
-    FG[:,    -1] = 1 \
-                   - FG[:, 0] \
-                   - (num_bins - 2) * zpitch / float(el_traverse_time)
+    # Don't divide by 0
+    if el_traverse_time == 0:
+        FG[:, 0] = 1 # All photons sent to first time bin
+        FG[:, 1] = 0
+    else:
+        # Compute the fraction of gain in each relevant map
+        FG[:,     0] = np.minimum(
+                       (1 + f_TS - TS) * zpitch, el_traverse_time) \
+                       / float(el_traverse_time)
+        FG[:, 1: -1] = zpitch / float(el_traverse_time) # all the same
+        FG[:,    -1] = 1 \
+                       - FG[:, 0] \
+                       - (num_bins - 2) * zpitch / float(el_traverse_time)
 
     #** Note fraction of gain in each map is equivalent to fraction of
     #   of EL traversed by electron during time bin associated with map
@@ -322,8 +327,10 @@ def bin_EL(E, xpos, ypos, zpos, xydim, zdim, zpitch,
                 try:
                     # get electron's contribution to this map
                     ev_maps[:, :, f_ts + b] = SiPM_response(e, xpos, ypos,
-                       xydim, zbs[[b, b + 1]], fg)
+                       xydim, zbs[[b, b + 1]], fg * g)
 
+                     print(SiPM_response(e, xpos, ypos,
+                        xydim, zbs[[b, b + 1]], fg * g).max())
                 # Outside z-window
                 except IndexError:
                     if f_ts > zdim: raise
