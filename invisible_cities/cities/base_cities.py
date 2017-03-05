@@ -125,7 +125,7 @@ class City:
                              "PMT WL"       : sp.PMTWL,
                              "# SiPM"       : sp.NSIPM,
                              "SIPM WL"      : sp.SIPMWL})
-        
+
     config_file_format = """
     # set_input_files
     PATH_IN {PATH_IN}
@@ -151,79 +151,87 @@ class City:
     def write_config_file(cls, filename, **options):
         with open(filename, 'w') as conf_file:
             conf_file.write(cls.config_file_contents(**options))
-        
+
 class DetectorResponseCity(City):
     """
     Extends City with set_geometry, set_drifting_params
     and set_sensor_response_params methods to allow for
     usage of core/detector_response_functions.py
-    
+
+    new parameters:
+    tplane_box is an instance of TrackingPlaneBox
+    hpxe is an instance of HPXeEl
     """
     def __init__(self,
                  run_number  = 0,
                  files_in    = None,
                  file_out    = None,
                  compression = 'ZLIB4',
-                 nprint      = 10000):
+                 nprint      = 10000,
+                 tplane_box  = None,
+                 hpxe        = None
+                 ):
 
-        
+
         City.__init__(self,
                       run_number  = run_number,
                       files_in    = files_in,
                       file_out    = file_out,
                       compression = compression,
-                      nprint      = nprint)     
-        
-    def set_geometry(self, min_xp, max_xp, min_yp, max_yp, 
-                     min_zp, max_zp, xydim, zdim, xypitch, zpitch,
-                     el_sipm_d, el_width, el_traverse_time):
-        """
-        Set geometry
-        """
-        # Active Region
-        self.min_xp  = min_xp 
-        self.max_xp  = max_xp
-        self.min_yp  = min_yp
-        self.max_yp  = max_yp
-        self.min_zp  = min_zp
-        self.max_zp  = max_zp  
-        self.xydim   = xydim
-        self.zdim    = zdim
-        self.xypitch = xypitch
-        self.zpitch  = zpitch
-        
-        # Anode
-        self.el_sipm_d        = el_sipm_d
-        self.el_width         = el_width
-        self.el_traverse_time = el_traverse_time
+                      nprint      = nprint)
 
-    def set_drifting_params(self, max_energy, electrons_prod_F, reduce_electrons, 
-                            w_val, drift_speed, transverse_diffusion,
-                            longitudinal_diffusion):
-        """
-        Necessary for drift_electrons(), diffuse_electrons()
-        in core/detector_response_functions.py
-        """
-        self.w_val                  = w_val
-        self.max_energy             = max_energy
-        self.drift_speed            = drift_speed
-        self.reduce_electrons       = reduce_electrons
-        self.electrons_prod_F       = electrons_prod_F
-        self.transverse_diffusion   = transverse_diffusion
-        self.longitudinal_diffusion = longitudinal_diffusion
-        
-    def set_sensor_response_params(self, t_gain, gain_nf, zmear, 
-                                   photon_detection_noise):
-        """
-        Necessary for EL_smear() and SiPM_response() in 
-        core/detector_response_functions.py
-        """
-        self.photon_detection_noise = photon_detection_noise
-        self.zmear    = zmear
-        self.t_gain   = t_gain
-        self.gain_nf  = gain_nf
-    
-        
+        self.tplane_box = tplane_box
+        self.hpxe = hpxe
+
+    # def set_geometry(self, min_xp, max_xp, min_yp, max_yp,
+    #                  min_zp, max_zp, xydim, zdim, xypitch, zpitch,
+    #                  el_sipm_d, el_width, el_traverse_time):
+    #     """
+    #     Set geometry
+    #     """
+    #     # Active Region
+    #     self.min_xp  = min_xp
+    #     self.max_xp  = max_xp
+    #     self.min_yp  = min_yp
+    #     self.max_yp  = max_yp
+    #     self.min_zp  = min_zp
+    #     self.max_zp  = max_zp
+    #     self.xydim   = xydim
+    #     self.zdim    = zdim
+    #     self.xypitch = xypitch
+    #     self.zpitch  = zpitch
+    #
+    #     # Anode
+    #     self.el_sipm_d        = el_sipm_d
+    #     self.el_width         = el_width
+    #     self.el_traverse_time = el_traverse_time
+    #
+    # def set_drifting_params(self, max_energy, electrons_prod_F, reduce_electrons,
+    #                         w_val, drift_speed, transverse_diffusion,
+    #                         longitudinal_diffusion):
+    #     """
+    #     Necessary for drift_electrons(), diffuse_electrons()
+    #     in core/detector_response_functions.py
+    #     """
+    #     self.w_val                  = w_val
+    #     self.max_energy             = max_energy
+    #     self.drift_speed            = drift_speed
+    #     self.reduce_electrons       = reduce_electrons
+    #     self.electrons_prod_F       = electrons_prod_F
+    #     self.transverse_diffusion   = transverse_diffusion
+    #     self.longitudinal_diffusion = longitudinal_diffusion
+    #
+    # def set_sensor_response_params(self, t_gain, gain_nf, zmear,
+    #                                photon_detection_noise):
+    #     """
+    #     Necessary for EL_smear() and SiPM_response() in
+    #     core/detector_response_functions.py
+    #     """
+    #     self.photon_detection_noise = photon_detection_noise
+    #     self.zmear    = zmear
+    #     self.t_gain   = t_gain
+    #     self.gain_nf  = gain_nf
+
 
 
 class SensorResponseCity(City):

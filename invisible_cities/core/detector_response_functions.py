@@ -6,6 +6,61 @@
 
 import numpy  as np
 import tables as tb
+from   invisible_cities.core.system_of_units_c import units
+
+class HPXeEL:
+    """
+    Defines a HPXe EL TPC
+    EP = E/P
+    dV = drift velocity
+    P  = pressure
+    d  = EL grid gap
+    t  = dustance from the EL anode to the tracking plane
+    L  = drift lenght
+    Ws = energy to produce a scintillation photon
+    Wi = energy to produce a ionization photon
+    rf = electron reduction factor. This is a number that multiplies
+         the number of electrons and divides the number of photons, so
+         that the product of both is the same (but the number of
+         generated electrons is smaller)
+    """
+    def __init__(self,EP      =   3.5 * units.kilovolt/ (units.cm * units.bar),
+                      dV      =   1.0 * units.mm/units.mus,
+                      P       =  15   * units.bar,
+                      d       =   5   * units.mm,
+                      t       =   5   * units.mm,
+                      L       = 530   * units.mm,
+                      Ws      =  24   * units.eV,
+                      Wi      =  16   * units.eV,
+                      fano    =   0.15,
+                      diff_xy =   10  * units.mm/np.sqrt(1 * units.m),
+                      diff_z  =    3  * units.mm/np.sqrt(1 * units.m),
+                      rf      =    1):
+
+        self.EP   =  EP
+        u          = units.kilovolt/(units.cm*units.bar)
+        ep         = EP/u
+        self.dV    = dV
+        self.P     = P
+        self.d     = d
+        self.L     = L
+        self.YP    = 140 * ep - 116  # in photons per electron bar^-1 cm^-1
+        self.Ng    = self.YP * self.d/units.cm * self.P/units.bar #photons/e
+        self.Ws    = Ws
+        self.Wi    = Wi
+        self.rf    = rf
+        self.fano  = fano
+
+    def scintillation_photons(self,E):
+        return E / self.Ws
+
+    def ionization_electrons(self,E):
+        return rf * E / self.Wi
+
+    def el_photons(self,E):
+        return self.Ng / rf
+
+
 
 def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_F):
     """
