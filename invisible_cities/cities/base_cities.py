@@ -181,7 +181,7 @@ class DetectorResponseCity(City):
                       nprint      = nprint)
 
         self.tplane_box = tplane_box
-        self.hpxe = hpxe
+        self.hpxe       = hpxe
 
     # def set_geometry(self, min_xp, max_xp, min_yp, max_yp,
     #                  min_zp, max_zp, xydim, zdim, xypitch, zpitch,

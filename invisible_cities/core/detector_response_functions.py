@@ -11,58 +11,60 @@ from   invisible_cities.core.system_of_units_c import units
 class HPXeEL:
     """
     Defines a HPXe EL TPC
-    EP = E/P
-    dV = drift velocity
-    P  = pressure
-    d  = EL grid gap
-    t  = dustance from the EL anode to the tracking plane
-    L  = drift lenght
-    Ws = energy to produce a scintillation photon
-    Wi = energy to produce a ionization photon
-    rf = electron reduction factor. This is a number that multiplies
-         the number of electrons and divides the number of photons, so
-         that the product of both is the same (but the number of
-         generated electrons is smaller)
+    EP   = E/P
+    dV   = drift velocity
+    P    = pressure
+    d    = EL grid gap
+    t    = dustance from the EL anode to the tracking plane
+    L    = drift length
+    Ws   = energy to produce a scintillation photon
+    Wi   = energy to produce a ionization electron
+    fano = sigma = sqrt(fano * hit energy / Wi)
+    rf   = electron reduction factor. This is a number that multiplies
+           the number of electrons and divides the number of photons, so
+           that the product of both is the same (but the number of
+           generated electrons is smaller)
     """
-    def __init__(self,EP      =   3.5 * units.kilovolt/ (units.cm * units.bar),
-                      dV      =   1.0 * units.mm/units.mus,
-                      P       =  15   * units.bar,
-                      d       =   5   * units.mm,
-                      t       =   5   * units.mm,
-                      L       = 530   * units.mm,
-                      Ws      =  24   * units.eV,
-                      Wi      =  16   * units.eV,
-                      fano    =   0.15,
-                      diff_xy =   10  * units.mm/np.sqrt(1 * units.m),
-                      diff_z  =    3  * units.mm/np.sqrt(1 * units.m),
-                      rf      =    1):
+    def __init__(self,EP      =   3.5  * units.kilovolt/ (units.cm * units.bar),
+                      dV      =   1.0  * units.mm/units.mus,
+                      P       =  15    * units.bar,
+                      d       =   5    * units.mm,
+                      t       =   5    * units.mm,
+                      L       = 530    * units.mm,
+                      Ws      =  24    * units.eV,
+                      Wi      =  16    * units.eV,
+                      ie_fano =   0.15,
+                      diff_xy =  10    * units.mm/np.sqrt(1 * units.m),
+                      diff_z  =   3    * units.mm/np.sqrt(1 * units.m),
+                      rf      =   1):
 
-        self.EP   =  EP
-        u          = units.kilovolt/(units.cm*units.bar)
-        ep         = EP/u
-        self.dV    = dV
-        self.P     = P
-        self.d     = d
-        self.L     = L
-        self.YP    = 140 * ep - 116  # in photons per electron bar^-1 cm^-1
-        self.Ng    = self.YP * self.d/units.cm * self.P/units.bar #photons/e
-        self.Ws    = Ws
-        self.Wi    = Wi
-        self.rf    = rf
-        self.fano  = fano
+        self.EP      = EP
+        u            = units.kilovolt/(units.cm*units.bar)
+        ep           = EP/u
+        self.dV      = dV
+        self.P       = P
+        self.d       = d
+        self.L       = L
+        self.YP      = 140 * ep - 116  # in photons per electron bar^-1 cm^-1
+        self.Ng      = self.YP * self.d/units.cm * self.P/units.bar #photons/e
+        self.Ws      = Ws
+        self.Wi      = Wi
+        self.rf      = rf
+        self.ie_fano = ie_fano
 
-    def scintillation_photons(self,E):
+    def scintillation_photons(self, E):
         return E / self.Ws
 
-    def ionization_electrons(self,E):
-        return rf * E / self.Wi
+    def ionization_electrons(self, E):
+        return self.rf * E / self.Wi
 
-    def el_photons(self,E):
-        return self.Ng / rf
+    def el_photons(self, E):
+        return self.Ng * E / self.rf
 
 
+def gather_montecarlo_true_hits():
 
-def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_F):
+def generate_ionization_electrons(ptab, nrow, max_energy, hpxe):
     """
     arguments:
     pytable for 1 file of signal/background events,
@@ -86,7 +88,7 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
     current_event = ptab[nrow]['event_indx']
 
     # Approximate number of electrons + some padding
-    E = np.zeros((int(round(max_energy / w_val)), 3),
+    E = np.zeros((int(round(max_energy / hpxe.Wi)), 3),
                          dtype=np.float32)
     lect = len(E)
 
@@ -106,21 +108,21 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
             raise ValueError('current_event skipped or poorly tracked')
 
         # e_indf - e_ind is num drifting electrons from hit
-        e_indf = e_ind + int(round(row['hit_energy'] * 10**6 / w_val))
+        e_indf = e_ind + int(round(row['hit_energy'] * units.eV / hpxe.Wi))
 
         # Hit does not have enough energy to produce a grouped electron
         if e_indf == e_ind: continue
 
         # add fluctuations in num drifting electrons produced
-        if electrons_prod_F > 0:
+        if ie_fano > 0:
             e_indf += int(np.round(np.random.normal(
-                scale=np.sqrt((e_indf - e_ind) * electrons_prod_F))))
+                scale=np.sqrt((e_indf - e_ind) * hpxe.ie_fano))))
 
         # Throw error if e_indf greater than electrons len
         if e_indf >= lect: raise ValueError('electrons is not long enough')
 
         # Initial position of electrons
-        E[e_ind: e_indf] = row['hit_position']
+        E[e_ind: e_indf] = row['hit_position'] * units.mm
 
         e_ind = e_indf
 
@@ -128,20 +130,20 @@ def generate_ionization_electrons(ptab, nrow, max_energy, w_val, electrons_prod_
     return (E[:e_indf], -1, True)
 
 
-def diffuse_electrons(E, drift_speed, t_diff, l_diff):
+def diffuse_electrons(E, dV, xy_diff, z_diff):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
     """
     # z distance in meters
-    z_sqdist_from_el = np.sqrt(E[:, 2] / float(1000))
+    z_sqdist_from_el = np.sqrt(E[:, 2] / float(units.m))
 
     num_E = len(E)
     if t_diff > 0:
 
         # mean=0, sigma=lat_diff * sqrt(m)
         lateral_drift = np.random.normal(
-            scale=t_diff * np.array(
+            scale=xy_diff * np.array(
                 [z_sqdist_from_el, z_sqdist_from_el],
                  dtype=np.float32).T,
             size=(num_E, 2))
@@ -150,19 +152,19 @@ def diffuse_electrons(E, drift_speed, t_diff, l_diff):
 
     if l_diff > 0:
         longitudinal_drift = np.random.normal(
-            scale=l_diff * z_sqdist_from_el,
+            scale=z_diff * z_sqdist_from_el,
             size=(num_E,))
 
         E[:, 2] += longitudinal_drift
 
-    E[:, 2] /= drift_speed
+    E[:, 2] /= dV
 
-    # Note not entirely necessary since mod in place
+    # not really necessary since mod in place?
     return E
 
-def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
+def sliding_window(E, xydim, zdim, xpitch, ypitch, zpitch, min_xp, max_xp,
                    min_yp, max_yp, min_zp, max_zp, d_cut, el_traverse_time,
-                   drift_speed, window_energy_threshold):
+                   dV, window_energy_threshold):
     """
     sliding window finds a xydim*xypitch by xydim*xypitch by zdim * zpitch
     window of sipms that have detected photons in this event.
@@ -210,8 +212,8 @@ def sliding_window(E, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
     # Correct time
     if zb[0] < min_zp:
         zb -= zb[0]
-    elif zb[1] > max_zp / drift_speed:
-        zb = zb - (zb[1] - np.ceil(max_zp / drift_speed)).astype(np.int32)
+    elif zb[1] > max_zp / dV:
+        zb = zb - (zb[1] - np.ceil(max_zp / dV)).astype(np.int32)
 
     # Get SiPM positions
     xpos = np.array(range(xb[0], xb[1] + xypitch, xypitch), dtype=np.int32)
@@ -329,8 +331,6 @@ def bin_EL(E, xpos, ypos, zpos, xydim, zdim, zpitch,
                     ev_maps[:, :, f_ts + b] = SiPM_response(e, xpos, ypos,
                        xydim, zbs[[b, b + 1]], fg * g)
 
-                     print(SiPM_response(e, xpos, ypos,
-                        xydim, zbs[[b, b + 1]], fg * g).max())
                 # Outside z-window
                 except IndexError:
                     if f_ts > zdim: raise
