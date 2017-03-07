@@ -286,7 +286,7 @@ def test_tracking_plane_innerbox():
     test_box_lengths(b)
     test_box_volume(b)
 
-def test_tracking_plane_response_box_method():
+def test_tracking_plane_box_in_sipm_plane_method():
     b = TrackingPlaneBox()
     assert     b.in_sipm_plane(-235   * units.mm, -235 * units.mm)
     assert     b.in_sipm_plane( 235   * units.mm,  235 * units.mm)
@@ -298,7 +298,7 @@ def test_tracking_plane_response_box_method():
     assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm, -236 * units.mm)
 
-def test_tracking_plane_response_box():
+def test_tracking_plane_response_box_baseclasses():
     assert False
 
 def test_HPXeEL_attributes():
@@ -309,11 +309,31 @@ def test_HPXeEL_attributes():
 
 def test_HPXeEL_methods():
     D = HPXeEL()
+    energy = np.array([2 * units.keV, 3 * units.keV], dtype=np.float32)
     assert (D.scintillation_photons(energy) == energy * D.rf / D.Ws).all()
     assert (D.ionization_electrons (energy) == energy * D.rf / D.Wi).all()
     assert (D.el_photons           (energy) == energy * D.Ng / D.rf).all()
 
-def test_find_response_borders_even_dim():
-    rc, ma, mi = find_response_borders(5.2, 7, 6): #(center, pitch, dim)
-    assert rc  = 3.5
-    a
+def test_tracking_plane_response_box_helper_find_response_borders_even_dim():
+    hits   =   5.2
+    pitch  =  10
+    dim    =   4
+    absmin = -55
+    absmax =  55
+    rc, ma, mi = find_response_borders(hits, pitch, dim, absmin, absmax)
+    assert rc == 10
+    assert ma == rc + (dim / 2.0 * pitch - pitch / 2.0)
+    assert mi == rc - (dim / 2.0 * pitch - pitch / 2.0)
+    assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
+
+def test_tracking_plane_response_box_helper_find_response_borders_oddd_dim():
+    hits   =   5.2
+    pitch  =  10
+    dim    =   3
+    absmin = -55
+    absmax =  55
+    rc, ma, mi = find_response_borders(hits, pitch, dim, absmin, absmax)
+    assert rc == 5
+    assert ma == rc + (dim - 1) / 2.0 * pitch
+    assert mi == rc - (dim - 1) / 2.0 * pitch
+    assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
