@@ -6,6 +6,7 @@
 
 import numpy  as np
 import tables as tb
+import pandas as pd
 
 from   invisible_cities.core.system_of_units_c import units
 
@@ -62,8 +63,38 @@ class HPXeEL:
     def el_photons(self, E):
         return self.Ng * E / self.rf
 
-def gather_montecarlo_hits(ptab):
-    pass
+def gather_montecarlo_hits(filepath):
+    """
+    gather_montecarlo_hits is a dictionary with where a key is an event number
+    and a value is a pandas DataFrame with all of the hits (hit=[x,y,z,E]) for
+    that event.
+    """
+    f = tb.open_file(filepath, 'r')
+    ptab = f.root.MC.MCTracks
+
+    Events = {}
+    cols   = ['x', 'y', 'z', 'E']
+    s_row  = 0
+    ev     = ptab[0]['event_indx']
+
+    # Iterate over the hits
+    for row in ptab.iterrows():
+
+        # Check for new events
+        if ev != row['event_indx']:
+            ev_hits = np.empty((row.nrow - s_row, 4), dtype=np.float32)
+            ev_hits[:, :3] = ptab[s_row : row.nrow]['hit_position']
+            ev_hits[:,  3] = ptab[s_row : row.nrow]['hit_energy'  ]
+
+            Events[ev] = pd.DataFrame(data=ev_hits, columns=cols)
+
+            ev    = row['event_indx']
+            s_row = row.nrow
+
+    f.close()
+    return Events
+
+
 
 def generate_ionization_electrons(ptab, nrow, max_energy, hpxe):
     """
@@ -129,7 +160,6 @@ def generate_ionization_electrons(ptab, nrow, max_energy, hpxe):
 
     # Event recorded and file exhausted.
     return (E[:e_indf], -1, True)
-
 
 def diffuse_electrons(E, dV, xy_diff, z_diff):
     """

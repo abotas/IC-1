@@ -37,7 +37,6 @@ class Box:
     def volume(self):
         return  self.length_x() * self.length_y() * self.length_z()
 
-
 class TrackingPlaneBox(Box):
     """
     Defines a Tracking Plane Box (z will actually be time).
