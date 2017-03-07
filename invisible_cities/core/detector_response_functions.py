@@ -6,6 +6,7 @@
 
 import numpy  as np
 import tables as tb
+
 from   invisible_cities.core.system_of_units_c import units
 
 class HPXeEL:
@@ -61,8 +62,8 @@ class HPXeEL:
     def el_photons(self, E):
         return self.Ng * E / self.rf
 
-
-def gather_montecarlo_true_hits():
+def gather_montecarlo_hits(ptab):
+    pass
 
 def generate_ionization_electrons(ptab, nrow, max_energy, hpxe):
     """

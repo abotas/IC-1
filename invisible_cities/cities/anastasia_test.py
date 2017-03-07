@@ -2,6 +2,8 @@ import numpy  as np
 import tables as tb
 
 from os.path import expandvars
+from pytest  import fixture, mark
+
 
 from invisible_cities.core.detector_response_functions import \
      generate_ionization_electrons, \
@@ -11,9 +13,8 @@ from invisible_cities.core.detector_response_functions import \
      SiPM_response, \
      HPXeEL
 
-
 from invisible_cities.core.detector_geometry_functions import Box, \
-     TrackingPlaneBox, TrackingPlaneResponseBox
+     TrackingPlaneBox, TrackingPlaneResponseBox, find_response_borders
 
 from invisible_cities.core.configure         import configure
 from invisible_cities.cities.anastasia       import Anastasia, ANASTASIA
@@ -230,8 +231,6 @@ def test_SiPM_response():
             # np.isclose because these are floats
             assert np.isclose(resp, check[0], rtol=1e-8, atol=1e-9)
 
-
-
 def test_generate_ionization_electrons():
 
     tf = tb.open_file(expandvars(
@@ -282,17 +281,18 @@ def test_box_volume(b=None):
     if b == None: b = Box()
     assert b.volume() == b.length_x() * b.length_y() * b.length_z()
 
-def test_tracking_plane_box():
+def test_tracking_plane_innerbox():
     b = TrackingPlaneBox()
     test_box_lengths(b)
     test_box_volume(b)
-    assert b.in_sipm_plane(-235 * units.mm, -235 * units.mm)
-    assert b.in_sipm_plane( 235 * units.mm,  235 * units.mm)
-    assert b.in_sipm_plane( 235 * units.mm, -235 * units.mm)
-    assert b.in_sipm_plane(-235 * units.mm,  235 * units.mm)
-    assert b.in_sipm_plane(   1 * units.mm,    0 * units.mm)
 
-
+def test_tracking_plane_response_box_method():
+    b = TrackingPlaneBox()
+    assert     b.in_sipm_plane(-235   * units.mm, -235 * units.mm)
+    assert     b.in_sipm_plane( 235   * units.mm,  235 * units.mm)
+    assert     b.in_sipm_plane( 235   * units.mm, -235 * units.mm)
+    assert     b.in_sipm_plane(-235   * units.mm,  235 * units.mm)
+    assert     b.in_sipm_plane(   1   * units.mm,    0 * units.mm)
     assert not b.in_sipm_plane(-235.1 * units.mm,    0 * units.mm)
     assert not b.in_sipm_plane( 236   * units.mm,    0 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
@@ -301,12 +301,19 @@ def test_tracking_plane_box():
 def test_tracking_plane_response_box():
     assert False
 
-def test_HPXeEL():
+def test_HPXeEL_attributes():
     D = HPXeEL()
     energy = np.array([2 * units.keV, 3 * units.keV], dtype=np.float32)
     assert np.isclose(D.YP, 140 * D.EP / units.kilovolt*units.cm*units.bar - 116)
     assert np.isclose(D.Ng, D.YP * D.d / units.cm * D.P / units.bar)
 
+def test_HPXeEL_methods():
+    D = HPXeEL()
     assert (D.scintillation_photons(energy) == energy * D.rf / D.Ws).all()
     assert (D.ionization_electrons (energy) == energy * D.rf / D.Wi).all()
     assert (D.el_photons           (energy) == energy * D.Ng / D.rf).all()
+
+def test_find_response_borders_even_dim():
+    rc, ma, mi = find_response_borders(5.2, 7, 6): #(center, pitch, dim)
+    assert rc  = 3.5
+    a

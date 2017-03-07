@@ -35,7 +35,8 @@ class Box:
 
 class TrackingPlaneBox(Box):
     """
-    Defines a Tracking Plane Box (z will actually be time)
+    Defines a Tracking Plane Box (z will actually be time).
+
     """
 
     def __init__(self, x_min = -235 * units.mm,
@@ -55,42 +56,54 @@ class TrackingPlaneBox(Box):
         self.y_pitch = y_pitch
         self.z_pitch = z_pitch
 
-
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
        return ( (self.x_min <= x <= self.x_max) and
                 (self.y_min <= y <= self.y_max))
 
+def find_response_borders(center, pitch, dim):
+    if pitch % 2 == 1: raise ValueError('Odd Pitch')
+    if dim % 2 == 0:
+        r_center = round(center / float(pitch)) * pitch
+        d_min    = r_center - int(dim * pitch / 2.0 - pitch / 2.0)
+        d_max    = r_center - int(dim * pitch / 2.0 - pitch / 2.0)
+        return r_center, d_min, d_max
+
+    elif dim % 2 == 1: raise ValueError('odd dim not yet supported')
+    else:              raise ValueError('x,y,z_dim must be whole number')
+
 class TrackingPlaneResponseBox(TrackingPlaneBox):
     """
-    A sub Box of TrackingPlaneBox
-    xy_tol = distance from window in x OR y past which electrons are discarded
-     z_tol = distance from window in  time  past which electrons are discarded
-    ev_cut = energy fraction of evt outside window past which events are discarded
+    A sub Box of TrackingPlaneBox. It is a super class of TrackingPlaneBox
+    because it is a box, and it requires x_pitch, y_pitch, z_pitch params.
 
-    x,y,z_dim are the dimensions of the SiPM window for which we will calculate
-    responses. Here, x_min, x_max ... etc are functions of x_dim, y_dim etc not
-    the other way around. This is because from -e to -e the borders change
-    depending on the mean position of the drifting electrons,
-    but x,y,z_dim stay the same
+    (For now it seems useful to separate TrackingPlaneBox and
+    TrackingPlaneRespBox because there are times when we want a box with pitch
+    but it is fixed and there is no need for finding the center)
     """
-    def __init__(self, x_center=0, y_center=0, z_center=0,
-                       x_pitch = 1 * units.cm,
-                       y_pitch = 1 * units.cm,
-                       z_pitch = 2 * units.mus,
+    def __init__(self, x_center = 0 * units.cm,
+                       y_center = 0 * units.cm,
+                       z_center = 0 * units.cm,
+                       x_pitch  = 1 * units.cm,
+                       y_pitch  = 1 * units.cm,
+                       z_pitch  = 2 * units.mus,
 
-                       # Parameters addded at this level
-                       x_dim   = 20,
-                       y_dim   = 20,
-                       z_dim   = 60):
+                       # Parameters added at this level
+                       x_dim    = 5,
+                       y_dim    = 5,
+                       z_dim    = 2):
 
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.z_dim = z_dim
 
         # Compute borders
-
-
+        self.rx_center, self.x_min, self.x_max = find_response_borders(
+                                                     x_center, x_pitch, x_dim)
+        self.ry_center, self.y_min, self.y_max = find_response_borders(
+                                                     y_center, y_pitch, y_dim)
+        self.rz_center, self.z_min, self.z_max = find_response_borders(
+                                                     z_center, z_pitch, z_dim)
 
         TrackingPlaneBox.__init__(x_min   = self.x_min,
                                   x_max   = self.x_max,
