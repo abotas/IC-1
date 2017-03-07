@@ -11,7 +11,8 @@ from invisible_cities.core.detector_response_functions import \
      sliding_window, \
      bin_EL, \
      SiPM_response, \
-     HPXeEL
+     HPXeEL, \
+     gather_montecarlo_hits
 
 from invisible_cities.core.detector_geometry_functions import Box, \
      TrackingPlaneBox, TrackingPlaneResponseBox, find_response_borders
@@ -66,6 +67,7 @@ photon_detection_noise {photon_detection_noise}
 zmear {zmear}
 """
 
+"""
 def config_file_spec_with_tmpdir(tmpdir):
     return dict(PATH_IN  = '$ICDIR/database/test_data/',
                 FILE_IN  = 'NEW_se_mc_1evt.h5',
@@ -115,25 +117,7 @@ def test_command_line_Anastasia(config_tmpdir):
     ANASTASIA(['ANASTASIA', '-c', conf_file_name])
 
 def test_sliding_window(config_tmpdir):
-    """
-    1) check that sliding window is inside bounds perscribed by
-    min_xp, min_yp etc
 
-    2) check that electrons of distance greater than d_cut
-    from the window in x or y are discarded
-
-    3) check that electrons that occur more than EL_traverse_time
-    from window in z are discarded
-
-    4) check to see that sliding window cuts events with
-    more than x% of energy outside the window
-
-    5) check to see that window creates correct window
-
-    kwargs:
-    T, is the outside-window-energy-fraction, above which
-    events are cut.
-    """
     max_xp = 235; min_xp = -235
     max_yp = 235; min_yp = -235
     max_zp = 530; min_zp =  0
@@ -194,6 +178,8 @@ def test_sliding_window(config_tmpdir):
                           drift_speed,
                           window_energy_threshold) == 'Window Cut'
 
+"""
+
 def test_SiPM_response():
     """
     Check that SiPM_response returns correct map for a couple
@@ -230,6 +216,28 @@ def test_SiPM_response():
 
             # np.isclose because these are floats
             assert np.isclose(resp, check[0], rtol=1e-8, atol=1e-9)
+
+def test_gather_event_hits():
+    Events = gather_montecarlo_hits(
+        expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5'))
+
+    f = tb.open_file(
+        expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5'), 'r')
+
+    ptab = f.root.MC.MCTracks
+
+    ev = ptab[0]['event_indx']
+    s_row = 0
+
+    for row in ptab.iterrows():
+        if row['event_indx'] != ev:
+
+            # check correct number of hits in each event
+            #assert len(Events[ev]) == row.nrow - s_row
+            s_row = row.nrow
+            ev    = row['event_indx']
+
+    f.close()
 
 def test_generate_ionization_electrons():
 
@@ -297,9 +305,6 @@ def test_tracking_plane_box_in_sipm_plane_method():
     assert not b.in_sipm_plane( 236   * units.mm,    0 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm, -236 * units.mm)
-
-def test_tracking_plane_response_box_baseclasses():
-    assert False
 
 def test_HPXeEL_attributes():
     D = HPXeEL()
