@@ -69,25 +69,22 @@ def gather_montecarlo_hits(filepath):
     and a value is a pandas DataFrame with all of the hits (hit=[x,y,z,E]) for
     that event.
     """
-    f = tb.open_file(filepath, 'r')
-    ptab = f.root.MC.MCTracks
-
+    f      = tb.open_file(filepath, 'r')
+    ptab   = f.root.MC.MCTracks
     Events = {}
     cols   = ['x', 'y', 'z', 'E']
     s_row  = 0
     ev     = ptab[0]['event_indx']
-
     # Iterate over the hits
     for row in ptab.iterrows():
-
         # Check for new events
-        if ev != row['event_indx']:
-            ev_hits = np.empty((row.nrow - s_row, 4), dtype=np.float32)
-            ev_hits[:, :3] = ptab[s_row : row.nrow]['hit_position']
-            ev_hits[:,  3] = ptab[s_row : row.nrow]['hit_energy'  ]
-
+        if ev != row['event_indx'] or row.nrow == ptab.nrows - 1:
+            if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
+            else:                          f_row = row.nrow
+            ev_hits = np.empty((f_row - s_row, 4), dtype=np.float32)
+            ev_hits[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
+            ev_hits[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
             Events[ev] = pd.DataFrame(data=ev_hits, columns=cols)
-
             ev    = row['event_indx']
             s_row = row.nrow
 
