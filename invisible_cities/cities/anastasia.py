@@ -31,12 +31,7 @@ class Anastasia(DetectorResponseCity):
                  nprint     = 10000,
 
                  # Parameters added at this level
-                 NEVENTS = 0,
-                 window_energy_threshold = 0.05,
-                 d_cut = 15 * units.mm,
-                 max_energy = 2.6 * units.MeV, # mm
-                 ev_window = None
-                ):
+                 NEVENTS = 0):
 
         DetectorResponseCity.__init__(self,
                                       run_number = run_number,
