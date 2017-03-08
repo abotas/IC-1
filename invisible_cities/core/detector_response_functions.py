@@ -73,14 +73,19 @@ def gather_montecarlo_hits(filepath):
     ptab   = f.root.MC.MCTracks
     Events = {}
     cols   = ['x', 'y', 'z', 'E']
-    s_row  = 0
     ev     = ptab[0]['event_indx']
+    s_row  = 0
+
     # Iterate over the hits
     for row in ptab.iterrows():
+
         # Check for new events
         if ev != row['event_indx'] or row.nrow == ptab.nrows - 1:
+
+            # Bad karma? A trick to record the last event in the file
             if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
             else:                          f_row = row.nrow
+
             ev_hits = np.empty((f_row - s_row, 4), dtype=np.float32)
             ev_hits[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
             ev_hits[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
@@ -91,72 +96,28 @@ def gather_montecarlo_hits(filepath):
     f.close()
     return Events
 
-
-
-def generate_ionization_electrons(ptab, nrow, max_energy, hpxe):
+def generate_ionization_electrons(hits, Wi, ie_fano):
     """
-    arguments:
-    pytable for 1 file of signal/background events,
-    current row, since there are many rows/event.
-    max_energy is the maximum energy an event might have
-    w_val is w value
-    electrons_prod_F is the Fano factor multiplied by the mean
-    number of electrons that should be produced for a hit
-    of a particular energy to the the variance of fluctuation
-
-    returns:
-    E, data for all electrons in one event in a numpy ndarray
-    of shape = (num electrons in event, 3).
-    Ex: E[n] = [xpos, ypos, time]
-    ** note: I think this can only be done one event at a time since
-    ** there is a variable number of electrons in each event
-
-
-    nrow: keep track fo current row
+    Get the hits (a pandas DF contianing all the hits for an event)
+    generate ionization electrons for each hit
+    separate the electrons from each hit in a dictionary
     """
-    current_event = ptab[nrow]['event_indx']
+    H = {}
+    cols = ['x', 'y', 'z']
 
-    # Approximate number of electrons + some padding
-    E = np.zeros((int(round(max_energy / hpxe.Wi)), 3),
-                         dtype=np.float32)
-    lect = len(E)
-
-    # Track of position in electrons
-    e_ind = 0
-
-    # Iterate over hits for an evt
-    for row in ptab.iterrows(start=nrow):
-
-        # Note: event_indx not always consecutive
-        if row['event_indx'] > current_event:
-
-            # Delete excess space in electrons
-            return (E[:e_indf], row.nrow, False)
-
-        elif row['event_indx'] < current_event:
-            raise ValueError('current_event skipped or poorly tracked')
-
-        # e_indf - e_ind is num drifting electrons from hit
-        e_indf = e_ind + int(round(row['hit_energy'] * units.eV / hpxe.Wi))
-
-        # Hit does not have enough energy to produce a grouped electron
-        if e_indf == e_ind: continue
-
-        # add fluctuations in num drifting electrons produced
+    for i, h in enumerate(hits):
         if ie_fano > 0:
-            e_indf += int(np.round(np.random.normal(
-                scale=np.sqrt((e_indf - e_ind) * hpxe.ie_fano))))
+            num_ie   = np.random.normal(loc   =         (h[3] / Wi),
+                                        scale = np.sqrt((h[3] / Wi) * ie_fano))
+        else: num_ie = round(h[3] / Wi)
 
-        # Throw error if e_indf greater than electrons len
-        if e_indf >= lect: raise ValueError('electrons is not long enough')
+        H[i] = pd.DataFrame(
+                data    = np.empty((num_ie, 3), dtype=np.float32),
+                columns = cols,
+                dtype   = np.float32)
+        H[i] = h
 
-        # Initial position of electrons
-        E[e_ind: e_indf] = row['hit_position'] * units.mm
-
-        e_ind = e_indf
-
-    # Event recorded and file exhausted.
-    return (E[:e_indf], -1, True)
+    return H
 
 def diffuse_electrons(E, dV, xy_diff, z_diff):
     """

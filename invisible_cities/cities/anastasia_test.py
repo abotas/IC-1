@@ -226,53 +226,9 @@ def test_gather_event_hits():
 
     ptab = f.root.MC.MCTracks
 
-    ev = ptab[0]['event_indx']
-    s_row = 0
-
-    for row in ptab.iterrows():
-        if row['event_indx'] != ev:
-
-            # check correct number of hits in each event
-            #assert len(Events[ev]) == row.nrow - s_row
-            s_row = row.nrow
-            ev    = row['event_indx']
+    assert ptab.nrows == len(Events[ptab[0]['event_indx']])
 
     f.close()
-
-def test_generate_ionization_electrons():
-
-    tf = tb.open_file(expandvars(
-      '$ICDIR/database/test_data/NEW_se_mc_1evt.h5'),
-                      'r')
-    ptab = tf.root.MC.MCTracks
-    wval = 22.4e2
-
-    hpxe = HPXeEL()
-
-    op = generate_ionization_electrons(
-        ptab, 0, 2.6 * units.MeV, hpxe)
-
-    E, nrow, b = op
-
-    assert len(op) == 3
-    assert nrow == -1
-    assert b
-
-    current_e = 0
-    e_ih      = 0
-    e_in_hit  = 0
-
-    for row in ptab.iterrows():
-        expected_es = int(round(row['hit_energy'] * 10**6 / hpxe.Wi))
-        for e in E[e_ih:]:
-            if np.allclose(row['hit_position'], e):
-                e_in_hit  += 1
-                current_e += 1
-            else:
-                assert (expected_es == e_in_hit)
-                e_in_hit = 0
-                e_ih = current_e
-                break
 
 def test_box_lengths(b=None):
     if b == None: b = Box(x_min = -335 * units.mm,
