@@ -174,9 +174,10 @@ def test_correct_number_of_ionization_electrons_generated():
                          [4, 5, 6,  31 * units.eV]], dtype=np.float32))
 
     H = generate_ionization_electrons(hits.values, 10 * units.eV, 0)
-    assert len(H[0] == 10)
-    assert len(H[1] ==  3)
-
+    assert len(H)    ==  2
+    assert len(H[0]) == 10
+    assert len(H[1]) ==  3
+    
 def test_correct_diffuse_electrons_time_coordinate():
     dV      = 1.11 * units.mm / units.mus
     E       = np.zeros((10, 3)  , dtype=np.float32) * units.mm

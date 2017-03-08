@@ -108,14 +108,11 @@ def generate_ionization_electrons(hits, Wi, ie_fano):
     cols = ['x', 'y', 'z']
     for i, h in enumerate(hits):
         n_ie  = h[3] / Wi
-        n_ie += np.random.normal(scale=np.sqrt(n_ie * ie_fano))
-        n_ie  = int(round(n_ie))
-
-        H[i]  = pd.DataFrame(
-                 data    = np.empty((n_ie, 3), dtype=np.float32),
-                 columns = cols,
-                 dtype   = np.float32)
-        H[i] = h
+        n_ie += np.random.normal(scale=np.sqrt(h[3] / Wi * ie_fano))
+        E     = np.empty((int(round(n_ie)), 3), dtype=np.float32)
+        E[:]  = h[:3]
+        H[i]  = E
+        #H[i] = pd.DataFrame(data=E, columns=cols, dtype=np.float32)
     return H
 
 def diffuse_electrons(E, dV, xy_diff, z_diff):
@@ -141,11 +138,7 @@ def diffuse_electrons(E, dV, xy_diff, z_diff):
 
     E[:, :2] +=  lat_drift
     E[:,  2] += long_drift
-    print('--')
-    print(E[:, 2])
     E[:,  2] /= dV
-    print(E[:, 2])
-    print('--')
 
     # mod in place?
     return E
