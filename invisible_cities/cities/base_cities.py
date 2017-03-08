@@ -183,56 +183,6 @@ class DetectorResponseCity(City):
         self.tplane_box = tplane_box
         self.hpxe       = hpxe
 
-    # def set_geometry(self, min_xp, max_xp, min_yp, max_yp,
-    #                  min_zp, max_zp, xydim, zdim, xypitch, zpitch,
-    #                  el_sipm_d, el_width, el_traverse_time):
-    #     """
-    #     Set geometry
-    #     """
-    #     # Active Region
-    #     self.min_xp  = min_xp
-    #     self.max_xp  = max_xp
-    #     self.min_yp  = min_yp
-    #     self.max_yp  = max_yp
-    #     self.min_zp  = min_zp
-    #     self.max_zp  = max_zp
-    #     self.xydim   = xydim
-    #     self.zdim    = zdim
-    #     self.xypitch = xypitch
-    #     self.zpitch  = zpitch
-    #
-    #     # Anode
-    #     self.el_sipm_d        = el_sipm_d
-    #     self.el_width         = el_width
-    #     self.el_traverse_time = el_traverse_time
-    #
-    # def set_drifting_params(self, max_energy, electrons_prod_F, reduce_electrons,
-    #                         w_val, drift_speed, transverse_diffusion,
-    #                         longitudinal_diffusion):
-    #     """
-    #     Necessary for drift_electrons(), diffuse_electrons()
-    #     in core/detector_response_functions.py
-    #     """
-    #     self.w_val                  = w_val
-    #     self.max_energy             = max_energy
-    #     self.drift_speed            = drift_speed
-    #     self.reduce_electrons       = reduce_electrons
-    #     self.electrons_prod_F       = electrons_prod_F
-    #     self.transverse_diffusion   = transverse_diffusion
-    #     self.longitudinal_diffusion = longitudinal_diffusion
-    #
-    # def set_sensor_response_params(self, t_gain, gain_nf, zmear,
-    #                                photon_detection_noise):
-    #     """
-    #     Necessary for EL_smear() and SiPM_response() in
-    #     core/detector_response_functions.py
-    #     """
-    #     self.photon_detection_noise = photon_detection_noise
-    #     self.zmear    = zmear
-    #     self.t_gain   = t_gain
-    #     self.gain_nf  = gain_nf
-
-
 
 class SensorResponseCity(City):
     """A SensorResponseCity city extends the City base class adding the
