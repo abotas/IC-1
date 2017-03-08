@@ -42,14 +42,9 @@ class Anastasia(DetectorResponseCity):
                                       hpxe       = HPXeEL())
 
         self.NEVENTS = NEVENTS
-        self.window_energy_threshold = window_energy_threshold
-        self.d_cut = d_cut
-        self.max_energy = max_energy
-
 
         filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
         atom    = tb.Atom.from_dtype(np.dtype('Float32'))
-
         self.f_out   = tb.open_file(self.output_file, 'w')
         self.tmaps   = f_out.create_earray(f_out.root, 'maps', atom,
                                      (0, self.xydim, self.xydim, self.zdim),
@@ -77,60 +72,44 @@ class Anastasia(DetectorResponseCity):
         tmaps is the earray in file where SiPM maps are to be saved
         """
 
-        accepted_events  = 0
-        discarded_events = 0
+        processed_events = 0
 
         # Loop over each desired file in filespath
         for fn in self.input_files:
 
-            if accepted_events == self.NEVENTS: break
+            # Events is a dictionary mapping event index to dataframe of hits
+            Events = gather_montecarlo_hits(fn)
 
-            #print('Processing file ' + str(fn))
-            f_mc = tb.open_file(fn, 'r')
-            ptab = f_mc.root.MC.MCTracks
+            for ev in Events:
 
-            file_explored = False
-            nrow = 0 # track current row in pytable since events are not separated
+                ##TODO decide if this is DF or np array
+                # Hits is a dictionary mapping hit index to dataframe of electrons
+                Hits = generate_ionization_electrons(ev.values, hpxe.Wi, hpxe.ie_fano)
 
-            # Iterates over each event
-            while not file_explored:
+                for h in Hits:
 
-                # Use pytable to generate ionization electrons from hit
-                (electrons, nrow, file_explored) = generate_ionization_electrons(
-                            ptab, nrow, self.max_energy, hpxe)
+                    # Call diffuse_electrons
+                    electrons = diffuse_electrons(
+                                          h, hpxe.dV, hpxe.xy_diff, hpxe.z_diff)
 
-                # Call diffuse_electrons
-                electrons = diffuse_electrons(electrons, hpxe)
+                    # Find TrackingPlaneResponseBox within TrackingPlaneBox
+                    resp_box = TrackingPlaneResponseBox(h[0], h[1], h[2])
 
-                # Find sliding 3d window of anode centered around event
-                EPOS = sliding_window(electrons, self.tplane_box, self.hpxe, self.d_cut,
-                                      self.window_energy_threshold)
+                    # Get TrackingPlaneResponseBox response
+                    
 
-                # Unpack sliding window
-                try: (electrons, xpos, ypos, zpos) =  EPOS
+                    # Integrate response into larger Tracking Plane
 
-                # Or discard
-                except ValueError:
-                    if EPOS == 'Window Cut':
-                        discarded_events += 1
-                        continue
-                    else: raise
 
-                # Get SiPM maps
-                ev_maps = bin_EL(electrons, xpos, ypos, zpos, self.tplane_box, self.hpxe)
+                # Add poisson noise to SiPM responses
 
-                # Add noise in detection probability
-                if self.photon_detection_noise: ev_maps += np.random.poisson(ev_maps)
+                # Write SiPM map to file
 
-                # Save the event's maps
-                self.tmaps.append([ev_maps])
 
-                accepted_events += 1
-                if accepted_events == self.NEVENTS: break
+                processed_events    += 1
+                if processed_events == self.NEVENTS: break
 
-            f_mc.close()
 
-        print('Discarded ' + str(discarded_events) + ' events')
         print(self.f_out)
         self.f_out.close()
 
