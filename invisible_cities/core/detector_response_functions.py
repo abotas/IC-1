@@ -98,25 +98,24 @@ def gather_montecarlo_hits(filepath):
 
 def generate_ionization_electrons(hits, Wi, ie_fano):
     """
-    Get the hits (a pandas DF contianing all the hits for an event)
-    generate ionization electrons for each hit
-    separate the electrons from each hit in a dictionary
+    -Get the hits (a pandas DF contianing all the hits for an event)
+    -generate ionization electrons for each hit
+    -separate the electrons from each hit in a dictionary. keeping electrons
+    from different hits separate because all the electrons from one hit will
+    share the same TrackingPlaneResponseBox
     """
     H = {}
     cols = ['x', 'y', 'z']
-
     for i, h in enumerate(hits):
-        if ie_fano > 0:
-            num_ie   = np.random.normal(loc   =         (h[3] / Wi),
-                                        scale = np.sqrt((h[3] / Wi) * ie_fano))
-        else: num_ie = round(h[3] / Wi)
+        n_ie  = h[3] / Wi
+        n_ie += np.random.normal(scale=np.sqrt(n_ie * ie_fano))
+        n_ie  = int(round(n_ie))
 
-        H[i] = pd.DataFrame(
-                data    = np.empty((num_ie, 3), dtype=np.float32),
-                columns = cols,
-                dtype   = np.float32)
+        H[i]  = pd.DataFrame(
+                 data    = np.empty((n_ie, 3), dtype=np.float32),
+                 columns = cols,
+                 dtype   = np.float32)
         H[i] = h
-
     return H
 
 def diffuse_electrons(E, dV, xy_diff, z_diff):
@@ -124,31 +123,31 @@ def diffuse_electrons(E, dV, xy_diff, z_diff):
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
     """
+    # Avoid modifying in place?
+    E = np.copy(E)
+
     # z distance in meters
     z_sqdist_from_el = np.sqrt(E[:, 2] / float(units.m))
+    n_ie = len(E)
 
-    num_E = len(E)
-    if t_diff > 0:
+    # mean=0, sigma=lat_diff * sqrt(m)
+    lat_drift  = np.random.normal(scale = xy_diff * np.array(
+                                       [z_sqdist_from_el, z_sqdist_from_el],
+                                       dtype=np.float32).T,
+                                  size  = (n_ie, 2))
 
-        # mean=0, sigma=lat_diff * sqrt(m)
-        lateral_drift = np.random.normal(
-            scale=xy_diff * np.array(
-                [z_sqdist_from_el, z_sqdist_from_el],
-                 dtype=np.float32).T,
-            size=(num_E, 2))
+    long_drift = np.random.normal(scale = z_diff * z_sqdist_from_el,
+                                  size  = (n_ie,))
 
-        E[:, :2] += lateral_drift
+    E[:, :2] +=  lat_drift
+    E[:,  2] += long_drift
+    print('--')
+    print(E[:, 2])
+    E[:,  2] /= dV
+    print(E[:, 2])
+    print('--')
 
-    if l_diff > 0:
-        longitudinal_drift = np.random.normal(
-            scale=z_diff * z_sqdist_from_el,
-            size=(num_E,))
-
-        E[:, 2] += longitudinal_drift
-
-    E[:, 2] /= dV
-
-    # not really necessary since mod in place?
+    # mod in place?
     return E
 
 def sliding_window(E, xydim, zdim, xpitch, ypitch, zpitch, min_xp, max_xp,
