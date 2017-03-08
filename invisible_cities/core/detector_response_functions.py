@@ -123,98 +123,18 @@ def diffuse_electrons(E, dV, xy_diff, z_diff):
     # Avoid modifying in place?
     E = np.copy(E)
 
-    # z distance in meters
-    z_sqdist_from_el = np.sqrt(E[:, 2] / float(units.m))
+    # sqrt dist from EL grid
+    sd = np.sqrt(E[:, 2] / float(units.m))
     n_ie = len(E)
 
-    # mean=0, sigma=lat_diff * sqrt(m)
-    lat_drift  = np.random.normal(scale = xy_diff * np.array(
-                                       [z_sqdist_from_el, z_sqdist_from_el],
-                                       dtype=np.float32).T,
-                                  size  = (n_ie, 2))
-
-    long_drift = np.random.normal(scale = z_diff * z_sqdist_from_el,
-                                  size  = (n_ie,))
-
+    # mu=0, sig=lat_diff * sqrt(m)
+    lat_drift = np.random.normal(scale=xy_diff * np.array([sd, sd]).T, size=(n_ie,2))
+    long_drift= np.random.normal(scale= z_diff * sd,                   size=(n_ie,))
     E[:, :2] +=  lat_drift
     E[:,  2] += long_drift
     E[:,  2] /= dV
 
-    # mod in place?
-    return E
-
-def sliding_window(E, xydim, zdim, xpitch, ypitch, zpitch, min_xp, max_xp,
-                   min_yp, max_yp, min_zp, max_zp, d_cut, el_traverse_time,
-                   dV, window_energy_threshold):
-    """
-    sliding window finds a xydim*xypitch by xydim*xypitch by zdim * zpitch
-    window of sipms that have detected photons in this event.
-    the window is centered around the mean position of E and then
-    pushed into NEW (or desired) geometry.
-    arguments:
-    E, all the electrons in one event
-    returns:
-    'window cut' if event does not fit in window, else
-    returns:
-    E[in_e], a subarray of E, containing all the electrons in or
-    close to the sliding window.
-    xpos, positions of sipms in x
-    ypos, positions of sipms in y
-    zpos, times of time slices
-    """
-
-    if len(E) == 0: raise ValueError('E is empty, 0 electrons')
-
-    # Find event energy center between SiPMs in x,y,z
-    xcenter = round(np.mean(E[:, 0]) / float(xypitch)) * xypitch
-    ycenter = round(np.mean(E[:, 1]) / float(xypitch)) * xypitch
-    zcenter = round(np.mean(E[:, 2]) / float(zpitch )) * zpitch
-
-    # Find window boundaries
-    xb = np.array(
-        [xcenter - int(xydim * xypitch / 2.0 - xypitch / 2.0),
-         xcenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)],
-                   dtype=np.int16) # mm
-    yb = np.array(
-        [ycenter - int(xydim * xypitch / 2.0 - xypitch / 2.0),
-         ycenter + int(xydim * xypitch / 2.0 - xypitch / 2.0)],
-                   dtype=np.int16) # mm
-    zb = np.array(
-        [zcenter - (zdim * zpitch / 2.0 - zpitch / 2.0),
-         zcenter + (zdim * zpitch / 2.0 - zpitch / 2.0)],
-                  dtype=np.int16) # us
-
-    # Stuff inside 235mm x 235mm
-    if   xb[0] < min_xp: xb = xb + (min_xp - xb[0])
-    elif xb[1] > max_xp: xb = xb - (xb[1]  - max_xp)
-    if   yb[0] < min_yp: yb = yb + (min_yp - yb[0])
-    elif yb[1] > max_yp: yb = yb - (yb[1]  - max_yp)
-
-    # Correct time
-    if zb[0] < min_zp:
-        zb -= zb[0]
-    elif zb[1] > max_zp / dV:
-        zb = zb - (zb[1] - np.ceil(max_zp / dV)).astype(np.int32)
-
-    # Get SiPM positions
-    xpos = np.array(range(xb[0], xb[1] + xypitch, xypitch), dtype=np.int32)
-    ypos = np.array(range(yb[0], yb[1] + xypitch, xypitch), dtype=np.int32)
-    zpos = np.arange(zb[0], zb[1] + zpitch, zpitch, dtype=np.float32)
-
-    # Find indices of electrons not in/close to the window
-    out_e = (E[:, 0] <= xb[0] - d_cut) + (E[:, 0] >= xb[1] + d_cut) \
-          + (E[:, 1] <= yb[0] - d_cut) + (E[:, 1] >= yb[1] + d_cut) \
-          + (E[:, 2] <= zb[0] - el_traverse_time) \
-          + (E[:, 2] >= zb[1] + zpitch)
-
-    lect = float(len(E))
-
-    # If more than 5% of energy outside window, discard evt
-    if (np.sum(out_e) / float(len(E))) >= window_energy_threshold:
-        return 'Window Cut'
-
-    # Else return electrons in/near window
-    else: return (E[np.logical_not(out_e)], xpos, ypos, zpos)
+    return E # mod in place?
 
 def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     """
