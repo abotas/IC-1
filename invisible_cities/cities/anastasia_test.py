@@ -1,5 +1,6 @@
 import numpy  as np
 import tables as tb
+import pandas as pd
 
 from os.path import expandvars
 from pytest  import fixture, mark
@@ -115,69 +116,6 @@ def test_command_line_Anastasia(config_tmpdir):
     with open(conf_file_name, 'w') as conf_file:
         conf_file.write(config_file_contents)
     ANASTASIA(['ANASTASIA', '-c', conf_file_name])
-
-def test_sliding_window(config_tmpdir):
-
-    max_xp = 235; min_xp = -235
-    max_yp = 235; min_yp = -235
-    max_zp = 530; min_zp =  0
-    d_cut  = 15
-    drift_speed = 1.0
-    el_traverse_time = 2
-    xydim = 20; zdim = 60
-    xypitch = 10; zpitch = 2.0
-    window_energy_threshold = 0.05
-
-    E_1     = np.empty((1000, 3), dtype=np.float32)
-    E_1[:,] = np.array([max_xp + 1, 0, min_zp])
-
-    # Exceed x boundaries
-    E_1[0, 0] = max_xp + d_cut + 1
-    E_1[2, 0] = min_xp - d_cut - 1
-
-    # Exceed y boundaries
-    E_1[5, 1] =  d_cut + max_yp + 1
-    E_1[6, 1] = -d_cut + min_yp - 1
-
-    # Check z boundaries
-    E_1[8, 2]  =  el_traverse_time + max_zp / drift_speed + 1
-    E_1[-1, 2] = -el_traverse_time - 1
-
-    # Check redundancy
-    E_1[2, 1] =  d_cut + max_yp + 1
-    E_1[8, 0] = -d_cut + min_xp - 1
-
-    # (4)
-    EPOS = sliding_window(E_1, xydim, zdim, xypitch, zpitch, min_xp, max_xp,
-                   min_yp, max_yp, min_zp, max_zp, d_cut, el_traverse_time,
-                   drift_speed, window_energy_threshold)
-
-    assert EPOS != 'Window Cut'
-
-    try:    (E_1_out, xpos, ypos, zpos) = EPOS
-    except: ValueError
-
-    # (1, 2, 3)
-    assert len(E_1_out) == 994
-    assert xpos[ 0] == max_xp - (xydim - 1) * xypitch
-    assert xpos[-1] == max_xp
-    assert ypos[ 0] == -5 - (xydim / 2 - 1) * xypitch
-    assert ypos[-1] == ypos[0] + xypitch * (xydim - 1)
-    assert zpos[ 0] == min_zp
-    assert zpos[-1] == min_zp + (zdim - 1) * zpitch
-
-    # (4)
-    assert sliding_window(E_1[:100],
-                          xydim, zdim,
-                          xypitch, zpitch,
-                          min_xp, max_xp,
-                          min_yp, max_yp,
-                          min_zp, max_zp,
-                          d_cut,
-                          el_traverse_time,
-                          drift_speed,
-                          window_energy_threshold) == 'Window Cut'
-
 """
 
 def test_SiPM_response():
@@ -229,6 +167,22 @@ def test_gather_event_hits():
     assert ptab.nrows == len(Events[ptab[0]['event_indx']])
 
     f.close()
+
+def test_correct_number_of_ionization_electrons_generated():
+    hits = pd.DataFrame(
+        data = np.array([[1, 2, 3, 100 * units.eV],
+                         [4, 5, 6,  31 * units.eV]], dtype=np.float32))
+
+    H = generate_ionization_electrons(hits.values, 10 * units.eV, 0)
+    assert len(H[0] == 10)
+    assert len(H[1] ==  3)
+
+def test_correct_diffuse_electrons_time_coordinate():
+    dV      = 1.11 * units.mm / units.mus
+    E       = np.zeros((10, 3)  , dtype=np.float32) * units.mm
+    E[:, 2] = np.array(range(10), dtype=np.float32) * units.mm
+    d_E     = diffuse_electrons(np.copy(E), dV, 0, 0)
+    assert ( E[:, 2] / dV == d_E[:, 2] ).all()
 
 def test_box_lengths(b=None):
     if b == None: b = Box(x_min = -335 * units.mm,
