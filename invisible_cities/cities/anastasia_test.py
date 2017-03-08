@@ -177,7 +177,7 @@ def test_correct_number_of_ionization_electrons_generated():
     assert len(H)    ==  2
     assert len(H[0]) == 10
     assert len(H[1]) ==  3
-    
+
 def test_correct_diffuse_electrons_time_coordinate():
     dV      = 1.11 * units.mm / units.mus
     E       = np.zeros((10, 3)  , dtype=np.float32) * units.mm
@@ -216,6 +216,20 @@ def test_tracking_plane_box_in_sipm_plane_method():
     assert not b.in_sipm_plane( 236   * units.mm,    0 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm, -236 * units.mm)
+
+def test_tracking_plane_box_positons_methods():
+    x_min   = -20 * units.mm ; x_max = 20 * units.mm
+    y_min   = -20 * units.mm ; y_max = 20 * units.mm
+    z_min   = -20 * units.mus; z_max = 20 * units.mus
+    x_pitch =   5 * units.mm ;y_pitch = 4 * units.mm; z_pitch = 2 * units.mus
+    b = TrackingPlaneBox(x_min = x_min, x_max = x_max,
+                         y_min = y_min, y_max = y_max,
+                         z_min = z_min, z_max = z_max,
+                         x_pitch = x_pitch, y_pitch = y_pitch, z_pitch = z_pitch)
+    P = b.POS()
+    assert (P[0] == np.linspace(x_min, x_max,  9)).all() # x
+    assert (P[1] == np.linspace(y_min, y_max, 11)).all() # y
+    assert (P[2] == np.linspace(z_min, z_max, 21)).all() # z
 
 def test_HPXeEL_attributes():
     D = HPXeEL()

@@ -47,8 +47,8 @@ class TrackingPlaneBox(Box):
                        x_max =  235 * units.mm,
                        y_min = -235 * units.mm,
                        y_max =  235 * units.mm,
-                       z_min =    0 * units.mm,
-                       z_max =  530 * units.mm,
+                       z_min =    0 * units.mus,
+                       z_max =  530 * units.mus,
                        x_pitch = 10 * units.mm,
                        y_pitch = 10 * units.mm,
                        z_pitch = 2  * units.mus):
@@ -59,6 +59,15 @@ class TrackingPlaneBox(Box):
         if x_pitch <= 0 or y_pitch <= 0 or z_pitch <=0:
             raise ValueError('pitches must be positive')
 
+        if ((x_max - x_min) % x_pitch != 0 or
+            (y_max - y_min) % y_pitch != 0 or
+            (z_max - z_min) % z_pitch != 0):
+            print((x_max - x_min) % x_pitch,
+                  (y_max - y_min) % y_pitch,
+                  (z_max - z_min) % z_pitch)
+            print(z_max, z_min, z_pitch)
+            raise ValueError('max - min not divisible by pitch')
+
         self.x_pitch = x_pitch
         self.y_pitch = y_pitch
         self.z_pitch = z_pitch
@@ -67,6 +76,24 @@ class TrackingPlaneBox(Box):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
        return ( (self.x_min <= x <= self.x_max) and
                 (self.y_min <= y <= self.y_max))
+
+    def x_pos(self):
+        return np.linspace(
+            self.x_min, self.x_max, (self.x_max - self.x_min) / self.x_pitch + 1,
+            dtype=np.float32)
+    def y_pos(self):
+        return np.linspace(
+            self.y_min, self.y_max, (self.y_max - self.y_min) / self.y_pitch + 1,
+            dtype=np.float32)
+    def z_pos(self):
+        return np.linspace(
+            self.z_min, self.z_max, (self.z_max - self.z_min) / self.z_pitch + 1,
+            dtype=np.float32)
+    def POS(self):
+        return self.x_pos(), self.y_pos(), self.z_pos()
+
+
+
 
 def find_response_borders(center, pitch, dim, absmin, absmax):
     """
@@ -126,8 +153,8 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                        z_pitch  =    2 * units.mus,
 
                        # Parameters added at this level
-                       x_dim    =    5,
-                       y_dim    =    5,
+                       x_dim    =    8,
+                       y_dim    =    8,
                        z_dim    =    2,
                        x_absmin = -235 * units.mm,
                        y_absmin = -235 * units.mm,
