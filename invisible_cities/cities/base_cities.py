@@ -316,7 +316,6 @@ class SensorResponseCity(City):
              NOISE_CUT   =     3,
              RUN_ALL     = False))
 
-
 class DeconvolutionCity(City):
     """A Deconvolution city extends the City base class adding the
        deconvolution step, which transforms RWF into CWF.
@@ -497,7 +496,6 @@ class CalibratedCity(DeconvolutionCity):
                                self.sipm_adc_to_pes,
                                thr   = self.  thr_sipm,
                                n_MAU = self.n_MAU_sipm)
-
 
 class PmapCity(CalibratedCity):
     """A PMAP city extends a CalibratedCity, computing the S1, S2 and S2Si

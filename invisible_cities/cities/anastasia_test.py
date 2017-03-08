@@ -7,13 +7,12 @@ from pytest  import fixture, mark
 
 
 from invisible_cities.core.detector_response_functions import \
+     gather_montecarlo_hits, \
      generate_ionization_electrons, \
      diffuse_electrons, \
-     sliding_window, \
      bin_EL, \
      SiPM_response, \
-     HPXeEL, \
-     gather_montecarlo_hits
+     HPXeEL
 
 from invisible_cities.core.detector_geometry_functions import Box, \
      TrackingPlaneBox, TrackingPlaneResponseBox, find_response_borders
@@ -217,7 +216,7 @@ def test_tracking_plane_box_in_sipm_plane_method():
     assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
     assert not b.in_sipm_plane(   0   * units.mm, -236 * units.mm)
 
-def test_tracking_plane_box_positons_methods():
+def test_tracking_plane_box_positons():
     x_min   = -20 * units.mm ; x_max = 20 * units.mm
     y_min   = -20 * units.mm ; y_max = 20 * units.mm
     z_min   = -20 * units.mus; z_max = 20 * units.mus
@@ -226,7 +225,7 @@ def test_tracking_plane_box_positons_methods():
                          y_min = y_min, y_max = y_max,
                          z_min = z_min, z_max = z_max,
                          x_pitch = x_pitch, y_pitch = y_pitch, z_pitch = z_pitch)
-    P = b.POS()
+    P = b.P
     assert (P[0] == np.linspace(x_min, x_max,  9)).all() # x
     assert (P[1] == np.linspace(y_min, y_max, 11)).all() # y
     assert (P[2] == np.linspace(z_min, z_max, 21)).all() # z

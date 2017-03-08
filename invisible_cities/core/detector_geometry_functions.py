@@ -62,36 +62,26 @@ class TrackingPlaneBox(Box):
         if ((x_max - x_min) % x_pitch != 0 or
             (y_max - y_min) % y_pitch != 0 or
             (z_max - z_min) % z_pitch != 0):
-            print((x_max - x_min) % x_pitch,
-                  (y_max - y_min) % y_pitch,
-                  (z_max - z_min) % z_pitch)
-            print(z_max, z_min, z_pitch)
             raise ValueError('max - min not divisible by pitch')
 
         self.x_pitch = x_pitch
         self.y_pitch = y_pitch
         self.z_pitch = z_pitch
+        self.x_pos = np.linspace(self.x_min,  self.x_max,
+                                (self.x_max - self.x_min) / self.x_pitch + 1,
+                                 dtype=np.float32)
+        self.y_pos = np.linspace(self.y_min,  self.y_max,
+                                (self.y_max - self.y_min) / self.y_pitch + 1,
+                                 dtype=np.float32)
+        self.z_pos = np.linspace(self.z_min,  self.z_max,
+                                (self.z_max - self.z_min) / self.z_pitch + 1,
+                                 dtype=np.float32)
+        self.P = (self.x_pos, self.y_pos, self.z_pos)
 
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
-       return ( (self.x_min <= x <= self.x_max) and
-                (self.y_min <= y <= self.y_max))
-
-    def x_pos(self):
-        return np.linspace(
-            self.x_min, self.x_max, (self.x_max - self.x_min) / self.x_pitch + 1,
-            dtype=np.float32)
-    def y_pos(self):
-        return np.linspace(
-            self.y_min, self.y_max, (self.y_max - self.y_min) / self.y_pitch + 1,
-            dtype=np.float32)
-    def z_pos(self):
-        return np.linspace(
-            self.z_min, self.z_max, (self.z_max - self.z_min) / self.z_pitch + 1,
-            dtype=np.float32)
-    def POS(self):
-        return self.x_pos(), self.y_pos(), self.z_pos()
-
+       return ((self.x_min <= x <= self.x_max) and
+               (self.y_min <= y <= self.y_max))
 
 
 
