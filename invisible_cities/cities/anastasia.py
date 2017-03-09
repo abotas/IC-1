@@ -13,7 +13,7 @@ from invisible_cities.cities.base_cities import DetectorResponseCity
 from invisible_cities.core.configure  import configure, print_configuration, \
     read_config_file
 from invisible_cities.core.detector_response_functions import HPXeEL,  \
-     generate_ionization_electrons, diffuse_electrons, sliding_window, \
+     generate_ionization_electrons, diffuse_electrons, \
      bin_EL, SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, TrackingPlaneResponseBox
 
@@ -50,26 +50,9 @@ class Anastasia(DetectorResponseCity):
                                      (0, self.xydim, self.xydim, self.zdim),
                                      filters=filters)
 
-    def generate_s2(self):
+    def run(self):
         """
-        -Loops over all the signal/background events in all the (desired) files
-
-        -Calls drift_electrons for e ach event to determine drifting electrons'
-        coordinates when electrons reach the EL.
-
-        -Calls sliding_window, to find 3d 'window' of sipms central SiPMs
-        for each event.
-
-        -Calls EL_smear to compute SiPM_response if applying EL smear.
-        Otherwise calls SiPM_responses directly to compute SiPM response
-        within the window for each event.
-
-        -Saves data for event by event because pytables EArray is fast, we
-        do not know number of events ahead of time, np.concatenate can be
-        slow, and this way we don't need to hold maps memory.
-
-        arguments:
-        tmaps is the earray in file where SiPM maps are to be saved
+        genereate the SiPM maps for each event
         """
 
         processed_events = 0
@@ -95,8 +78,10 @@ class Anastasia(DetectorResponseCity):
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
                     resp_box = TrackingPlaneResponseBox(h[0], h[1], h[2])
 
-                    # Get TrackingPlaneResponseBox response
+                    # How do we integrate the effect of the EL
                     
+
+                    # Get TrackingPlaneResponseBox response
 
                     # Integrate response into larger Tracking Plane
 
