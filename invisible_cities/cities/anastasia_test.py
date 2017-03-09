@@ -131,25 +131,25 @@ def test_SiPM_response():
     ypos = np.array(range(5))*10 + 5
     gain = 1.0
     xydim = len(xpos)
-    el_sipm_d = 5
-    el_width  = 5
+    t = 5; d = 5
     m = np.zeros((len(xpos), len(ypos)), dtype=np.float32)
+    tpb = TrackingPlaneBox(x_min=xpos[0], x_max=xpos[-1],
+                           y_min=ypos[0], y_max=ypos[-1])
+    tpb.x_dim = xydim
+    tpb.y_dim = xydim
 
     # Get map
-    for e in E:
-        m += SiPM_response(e, xpos, ypos, xydim,
-                           [el_width + el_sipm_d, el_sipm_d],
-                           gain)
+    for e in E: m += SiPM_response(tpb, e, [t + d, d], gain)
 
     # Check equality
     for row, x in zip(m, xpos):
         for resp, y in zip(row, ypos):
 
             check = gain * np.array([1.0 / np.sqrt(
-                (E[0, 0] - x)**2 + (E[0, 1] - y)**2 + el_sipm_d**2) - \
+                (E[0, 0] - x)**2 + (E[0, 1] - y)**2 + t**2) - \
                 1  / np.sqrt((
-                E[0, 0] - x)**2 + (E[0, 1] - y)**2 + (el_sipm_d + el_width)**2)],
-                dtype=np.float32) / float(4) / float(el_width)
+                E[0, 0] - x)**2 + (E[0, 1] - y)**2 + (t + d)**2)],
+                dtype=np.float32) / float(4) / float(d)
 
             # np.isclose because these are floats
             assert np.isclose(resp, check[0], rtol=1e-8, atol=1e-9)
@@ -270,29 +270,38 @@ def test_tracking_plane_response_box_helper_find_response_borders_oddd_dim():
     assert ma == rc + (dim - 1) / 2.0 * pitch
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
 
+# TODO: USE FIXTURES CORRECTLY
+# TODO: explore more parameter space of (z_dim, t_el, z_pitch)
 def test_bin_EL_gain():
-    z  = 5.3 * units.mus
-    E  = np.array([[0, 0, z]], dtype=np.float32)
-    EL = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
-    b0 = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5)
-    b1 = TrackingPlaneResponseBox(0, 0, 11   * units.mus)
-    b2 = TrackingPlaneResponseBox(0, 0,  0   * units.mus)
-    F0, IB0 = bin_EL(E, EL, b0)
-    F1, IB1 = bin_EL(E, EL, b1)
-    F2, IB2 = bin_EL(E, EL, b2)
-    gf0 = 0
+    z   = 5.3 * units.mus
+    E   = np.array([[0, 0, z]], dtype=np.float32)
+    EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
+    b0  = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5)
+    F, IB = bin_EL(E, EL, b0)
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
-    gf3 = 1 - gf0 - gf1 - gf2
-    gf4 = 0
-    assert np.allclose(F0[0, 0], gf0 * EL.Ng)
-    assert np.allclose(F0[0, 1], gf1 * EL.Ng)
-    assert np.allclose(F0[0, 2], gf2 * EL.Ng)
-    assert np.allclose(F0[0, 3], gf3 * EL.Ng)
-    assert np.allclose(F0[0, 4], gf4 * EL.Ng)
-    assert np.allclose(F1, np.zeros_like(F1))
-    assert np.allclose(F2, np.zeros_like(F2))
+    gf3 = 1 - gf1 - gf2
+    assert np.allclose(F[0, 0], 0)
+    assert np.allclose(F[0, 1], gf1 * EL.Ng)
+    assert np.allclose(F[0, 2], gf2 * EL.Ng)
+    assert np.allclose(F[0, 3], gf3 * EL.Ng)
+    assert np.allclose(F[0, 4], 0)
 
 def test_bin_EL_integration_boundaries():
-    
-    assert False
+    z   = 5.3 * units.mus
+    E   = np.array([[0, 0, z]], dtype=np.float32)
+    EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
+    b0  = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5)
+    F, IB = bin_EL(E, EL, b0)
+    gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
+    gf2 =  b0.z_pitch                    / EL.t_el
+    gf3 = 1 - gf1 - gf2
+    ib0 = np.array([EL.d + EL.t, EL.d + EL.t],    dtype=np.float32)
+    ib1 = np.array([ib0[0], ib0[1] - gf1 * EL.d], dtype=np.float32)
+    ib2 = np.array([ib1[1], ib1[1] - gf2 * EL.d], dtype=np.float32)
+    ib3 = np.array([ib2[1], ib2[1] - gf3 * EL.d], dtype=np.float32)
+    assert np.allclose(IB[0, 0], ib0)
+    assert np.allclose(IB[0, 1], ib1)
+    assert np.allclose(IB[0, 2], ib2)
+    assert np.allclose(IB[0, 3], ib3)
+    assert IB[0, 4, 0] == IB[0, 4, 1]
