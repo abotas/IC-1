@@ -56,9 +56,10 @@ class TrackingPlaneBox(Box):
         Box.__init__(self, x_min=x_min, x_max=x_max, y_min=y_min,
                            y_max=y_max, z_min=z_min, z_max=z_max)
 
+        if z_min < 0:
+            raise ValueError('time must be positive')
         if x_pitch <= 0 or y_pitch <= 0 or z_pitch <=0:
             raise ValueError('pitches must be positive')
-
         if ((x_max - x_min) % x_pitch != 0 or
             (y_max - y_min) % y_pitch != 0 or
             (z_max - z_min) % z_pitch != 0):
@@ -82,8 +83,6 @@ class TrackingPlaneBox(Box):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
        return ((self.x_min <= x <= self.x_max) and
                (self.y_min <= y <= self.y_max))
-
-
 
 def find_response_borders(center, pitch, dim, absmin, absmax):
     """
@@ -117,7 +116,7 @@ def find_response_borders(center, pitch, dim, absmin, absmax):
         shift  = d_max - absmax
         d_min -= shift; d_max -= shift; r_center -= shift
 
-    return r_center, d_max, d_min
+    return r_center, d_min, d_max
 
 class TrackingPlaneResponseBox(TrackingPlaneBox):
     """
@@ -175,7 +174,8 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         self.rz_center, self.z_min, self.z_max = find_response_borders(
             z_center, z_pitch, z_dim, z_absmin, z_absmax)
 
-        TrackingPlaneBox.__init__(x_min   = self.x_min,
+        TrackingPlaneBox.__init__(self,
+                                  x_min   = self.x_min,
                                   x_max   = self.x_max,
                                   y_min   = self.y_min,
                                   y_max   = self.y_max,
