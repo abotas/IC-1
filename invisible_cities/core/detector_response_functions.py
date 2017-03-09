@@ -142,7 +142,7 @@ def diffuse_electrons(E, dV, xy_diff, z_diff):
 
     return E # mod in place?
 
-def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
+def SiPM_response(rb, e, z_bound, gain):
     """
     # All photons are emitted from the point where electron
     # hit EL plane. The el plane is 5mm from
@@ -151,10 +151,10 @@ def SiPM_response(e, xpos, ypos, xydim, z_bound, gain):
     """
 
     # Calculate the xy distances only once
-    dx2 = (xpos - e[0])**2
-    dy2 = (ypos - e[1])**2
-    DX2 = np.array([dx2 for i in range(xydim)], dtype=np.float32).T
-    DY2 = np.array([dy2 for i in range(xydim)], dtype=np.float32)
+    dx2 = (rb.x_pos - e[0])**2
+    dy2 = (rb.y_pos - e[1])**2
+    DX2 = np.array([dx2 for i in range(rb.x_dim)], dtype=np.float32).T
+    DY2 = np.array([dy2 for i in range(rb.y_dim)], dtype=np.float32)
 
     return np.array(
            gain / (4.0 * (z_bound[0] - z_bound[1])) \
@@ -188,6 +188,7 @@ def bin_EL(E, hpxe, rb):
             if j == f:
                 # Calculate gain in first responsive slice
                 fg = min((j + 1 - ts) * rb.z_pitch / hpxe.t_el, 1)
+
                 # Compute distance integration boundaries for time bin
                 s_d = hpxe.d + hpxe.t
                 ib  = [s_d, s_d - fg * hpxe.d]
