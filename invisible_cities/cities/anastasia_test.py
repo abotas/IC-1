@@ -154,28 +154,26 @@ def test_SiPM_response():
             # np.isclose because these are floats
             assert np.isclose(resp, check[0], rtol=1e-8, atol=1e-9)
 
-def test_gather_event_hits():
-    Events = gather_montecarlo_hits(
-        expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5'))
-
-    f = tb.open_file(
-        expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5'), 'r')
-
-    ptab = f.root.MC.MCTracks
-
+def test_gather_correct_number_of_hits():
+    fp     = expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5')
+    Events = gather_montecarlo_hits(fp)
+    f      = tb.open_file(fp, 'r')
+    ptab   = f.root.MC.MCTracks
     assert ptab.nrows == len(Events[ptab[0]['event_indx']])
-
     f.close()
 
 def test_correct_number_of_ionization_electrons_generated():
+    hE1 = 100 * units.eV
+    hE2 =  31 * units.eV
     hits = pd.DataFrame(
-        data = np.array([[1, 2, 3, 100 * units.eV],
-                         [4, 5, 6,  31 * units.eV]], dtype=np.float32))
+        data = np.array([[1, 2, 3, hE1],
+                         [4, 5, 6, hE2]], dtype=np.float32))
 
-    H = generate_ionization_electrons(hits.values, 10 * units.eV, 0)
-    assert len(H)    ==  2
-    assert len(H[0]) == 10
-    assert len(H[1]) ==  3
+    Wi = 10 * units.eV
+    H = generate_ionization_electrons(hits.values, Wi, 0)
+    assert len(H)    ==  len(hits.values)
+    assert len(H[0]) ==  round(hE1 / Wi)
+    assert len(H[1]) ==  round(hE2 / Wi)
 
 def test_correct_diffuse_electrons_time_coordinate():
     dV      = 1.11 * units.mm / units.mus
@@ -219,16 +217,21 @@ def test_tracking_plane_box_in_sipm_plane_method():
 def test_tracking_plane_box_positons():
     x_min   = -20 * units.mm ; x_max = 20 * units.mm
     y_min   = -20 * units.mm ; y_max = 20 * units.mm
-    z_min   = -20 * units.mus; z_max = 20 * units.mus
-    x_pitch =   5 * units.mm ;y_pitch = 4 * units.mm; z_pitch = 2 * units.mus
+    z_min   =   0 * units.mus; z_max =  6 * units.mus
+    x_pitch =   10 * units.mm ;y_pitch = 4 * units.mm; z_pitch = 2 * units.mus
     b = TrackingPlaneBox(x_min = x_min, x_max = x_max,
                          y_min = y_min, y_max = y_max,
                          z_min = z_min, z_max = z_max,
                          x_pitch = x_pitch, y_pitch = y_pitch, z_pitch = z_pitch)
     P = b.P
-    assert (P[0] == np.linspace(x_min, x_max,  9)).all() # x
-    assert (P[1] == np.linspace(y_min, y_max, 11)).all() # y
-    assert (P[2] == np.linspace(z_min, z_max, 21)).all() # z
+    print(P[0])
+    print('')
+    print(np.linspace(x_min, x_max,  9))
+    #print(P[1])
+    #print(P[2])
+    assert(P[0] == np.linspace(x_min, x_max, b.length_x() / b.x_pitch + 1)).all()
+    assert(P[1] == np.linspace(y_min, y_max, b.length_y() / b.y_pitch + 1)).all()
+    assert(P[2] == np.linspace(z_min, z_max, b.length_z() / b.z_pitch + 1)).all()
 
 def test_HPXeEL_attributes():
     D = HPXeEL()
@@ -245,24 +248,51 @@ def test_HPXeEL_methods():
 
 def test_tracking_plane_response_box_helper_find_response_borders_even_dim():
     hits   =   5.2
-    pitch  =  10
+    pitch  =  10 * units.mm
     dim    =   4
-    absmin = -55
-    absmax =  55
-    rc, ma, mi = find_response_borders(hits, pitch, dim, absmin, absmax)
+    absmin = -55 * units.mm
+    absmax =  55 * units.mm
+    rc, mi, ma = find_response_borders(hits, pitch, dim, absmin, absmax)
     assert rc == 10
-    assert ma == rc + (dim / 2.0 * pitch - pitch / 2.0)
     assert mi == rc - (dim / 2.0 * pitch - pitch / 2.0)
+    assert ma == rc + (dim / 2.0 * pitch - pitch / 2.0)
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
 
 def test_tracking_plane_response_box_helper_find_response_borders_oddd_dim():
     hits   =   5.2
-    pitch  =  10
+    pitch  =  10 * units.mm
     dim    =   3
-    absmin = -55
-    absmax =  55
-    rc, ma, mi = find_response_borders(hits, pitch, dim, absmin, absmax)
+    absmin = -55 * units.mm
+    absmax =  55 * units.mm
+    rc, mi, ma = find_response_borders(hits, pitch, dim, absmin, absmax)
     assert rc == 5
-    assert ma == rc + (dim - 1) / 2.0 * pitch
     assert mi == rc - (dim - 1) / 2.0 * pitch
+    assert ma == rc + (dim - 1) / 2.0 * pitch
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
+
+def test_bin_EL_gain():
+    z  = 5.3 * units.mus
+    E  = np.array([[0, 0, z]], dtype=np.float32)
+    EL = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
+    b0 = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5)
+    b1 = TrackingPlaneResponseBox(0, 0, 11   * units.mus)
+    b2 = TrackingPlaneResponseBox(0, 0,  0   * units.mus)
+    F0, IB0 = bin_EL(E, EL, b0)
+    F1, IB1 = bin_EL(E, EL, b1)
+    F2, IB2 = bin_EL(E, EL, b2)
+    gf0 = 0
+    gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
+    gf2 =  b0.z_pitch                    / EL.t_el
+    gf3 = 1 - gf0 - gf1 - gf2
+    gf4 = 0
+    assert np.allclose(F0[0, 0], gf0 * EL.Ng)
+    assert np.allclose(F0[0, 1], gf1 * EL.Ng)
+    assert np.allclose(F0[0, 2], gf2 * EL.Ng)
+    assert np.allclose(F0[0, 3], gf3 * EL.Ng)
+    assert np.allclose(F0[0, 4], gf4 * EL.Ng)
+    assert np.allclose(F1, np.zeros_like(F1))
+    assert np.allclose(F2, np.zeros_like(F2))
+
+def test_bin_EL_integration_boundaries():
+    
+    assert False
