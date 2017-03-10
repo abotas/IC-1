@@ -5,7 +5,6 @@ import pandas as pd
 from os.path import expandvars
 from pytest  import fixture, mark
 
-
 from invisible_cities.core.detector_response_functions import \
      gather_montecarlo_hits, \
      generate_ionization_electrons, \
@@ -22,52 +21,39 @@ from invisible_cities.cities.anastasia       import Anastasia, ANASTASIA
 from invisible_cities.core.system_of_units_c import units
 
 config_file_format = """
-# set_input_files
 PATH_IN {PATH_IN}
 FILE_IN {FILE_IN}
-
 PATH_OUT {PATH_OUT}
 FILE_OUT {FILE_OUT}
 COMPRESSION {COMPRESSION}
 RUN_NUMBER {RUN_NUMBER}
 NPRINT {NPRINT}
-
-
 NEVENTS {NEVENTS}
-RUN_ALL {RUN_ALL}
-
-
-electrons_prod_F {electrons_prod_F}
-max_energy {max_energy}
-reduce_electrons {reduce_electrons}
-w_val {w_val}
-
-longitudinal_diffusion {longitudinal_diffusion}
-transverse_diffusion {transverse_diffusion}
-drift_speed {drift_speed}
-window_energy_threshold {window_energy_threshold}
-d_cut {d_cut}
-min_xp {min_xp}
-max_xp {max_xp}
-min_yp {min_yp}
-max_yp {max_yp}
-min_zp {min_zp}
-max_zp {max_zp}
-el_sipm_d {el_sipm_d}
-el_width {el_width}
-xydim {xydim}
-zdim {zdim}
-xypitch {xypitch}
-zpitch {zpitch}
-
-gain_nf {gain_nf}
-t_gain {t_gain}
-el_traverse_time {el_traverse_time}
-photon_detection_noise {photon_detection_noise}
-zmear {zmear}
+ie_fano {ie_fano}
+g_fano {g_fano}
+rf {rf}
+Wi {Wi}
+diff_z {diff_z}
+diff_xy {diff_xy}
+dV {dV}
+x_min {x_min}
+x_max {x_max}
+y_min {y_min}
+y_max {y_max}
+z_min {z_min}
+z_max {z_max}
+x_pitch {x_pitch}
+y_pitch {y_pitch}
+z_pitch {z_pitch}
+x_dim {x_dim}
+y_dim {y_dim}
+z_dim {z_dim}
+t_el {t_el}
+t {t}
+d {d}
 """
 
-"""
+
 def config_file_spec_with_tmpdir(tmpdir):
     return dict(PATH_IN  = '$ICDIR/database/test_data/',
                 FILE_IN  = 'NEW_se_mc_1evt.h5',
@@ -78,36 +64,30 @@ def config_file_spec_with_tmpdir(tmpdir):
                 NEVENTS     =     1,
                 NPRINT      =     0,
                 RUN_ALL     = False,
+                ie_fano     =  0.1 ,
+                g_fano      =  0.15,
+                rf          =  1.0 ,
+                Wi          = 22.4 ,
+                diff_z      =  3    * units.mm/np.sqrt(units.m),
+                diff_xy     = 10    * units.mm/np.sqrt(units.m),
+                dV          =  1.0  * units.mm/units.mus,
+                x_min = -235 * units.mm,
+                x_max =  235 * units.mm,
+                y_min = -235 * units.mm,
+                y_max =  235 * units.mm,
+                z_min =  0   * units.mus,
+                z_max =  530 * units.mus,
+                t = 5 * units.mm,
+                d = 5 * units.mm,
+                x_dim = 8,
+                y_dim = 8,
+                z_dim = 2,
+                x_pitch =   10   * units.mm,
+                y_pitch =   10   * units.mm,
+                z_pitch =    2.0 * units.mus,
+                t_el    =    2   * units.mus)
 
-                electrons_prod_F = False,
-                max_energy       = 2.6e6,
-                reduce_electrons = 100  ,
-                w_val            = 22.4 ,
-
-                longitudinal_diffusion  = 3  ,
-                transverse_diffusion    = 10 ,
-                drift_speed             = 1.0,
-                window_energy_threshold = 0.05,
-                d_cut     =  15 ,
-                min_xp    = -235,
-                max_xp    =  235,
-                min_yp    = -235,
-                max_yp    =  235,
-                min_zp    =  0  ,
-                max_zp    =  530,
-                el_sipm_d =  5  ,
-                el_width  =  5  ,
-                xydim     =  20 ,
-                zdim      =  60 ,
-                xypitch   =  10 ,
-                zpitch    =  2.0,
-
-                gain_nf   = 0.0,
-                t_gain    = 1050.0,
-                el_traverse_time = 2,
-                photon_detection_noise = False,
-                zmear = True)
-
+@mark.slow
 def test_command_line_Anastasia(config_tmpdir):
     config_file_spec = config_file_spec_with_tmpdir(config_tmpdir)
     config_file_contents = config_file_format.format(**config_file_spec)
@@ -115,7 +95,6 @@ def test_command_line_Anastasia(config_tmpdir):
     with open(conf_file_name, 'w') as conf_file:
         conf_file.write(config_file_contents)
     ANASTASIA(['ANASTASIA', '-c', conf_file_name])
-"""
 
 def test_SiPM_response():
     """
