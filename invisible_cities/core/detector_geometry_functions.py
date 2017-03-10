@@ -135,6 +135,8 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
     TrackingPlaneResponseBox. Notice, with only x_pitch=10 and x_dim=3 I can
     not know if inside Tracking plane box there are SiPMs at x positions
     0cm, 1cm, 2cm or 0.5cm, 1.5cm, 2.5cm etc
+
+    R is the response of the response box
     """
     def __init__(self, x_center, y_center, z_center,
                        x_pitch  =   10 * units.mm,
@@ -158,13 +160,16 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
 
         self.x_dim    = x_dim
         self.y_dim    = y_dim
-        self.z_dim    = z_dim
+        self.z_dim    = z_dim   # initialize a response box
+        self.R        = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
+
         self.x_absmin = x_absmin
         self.y_absmin = y_absmin
         self.z_absmin = z_absmin
         self.x_absmax = x_absmax
         self.y_absmax = y_absmax
         self.z_absmax = z_absmax
+
 
         # Compute borders
         self.rx_center, self.x_min, self.x_max = find_response_borders(
