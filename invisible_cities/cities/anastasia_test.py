@@ -149,7 +149,8 @@ def test_correct_number_of_ionization_electrons_generated():
                          [4, 5, 6, hE2]], dtype=np.float32))
 
     Wi = 10 * units.eV
-    H = generate_ionization_electrons(hits.values, Wi, 0)
+    hpxe = HPXeEL(Wi=10*units.eV, ie_fano=0)
+    H = generate_ionization_electrons(hits.values, hpxe)
     assert len(H)    ==  len(hits.values)
     assert len(H[0]) ==  round(hE1 / Wi)
     assert len(H[1]) ==  round(hE2 / Wi)
@@ -158,8 +159,8 @@ def test_correct_diffuse_electrons_time_coordinate():
     dV      = 1.11 * units.mm / units.mus
     E       = np.zeros((10, 3)  , dtype=np.float32) * units.mm
     E[:, 2] = np.array(range(10), dtype=np.float32) * units.mm
-    d_E     = diffuse_electrons(np.copy(E), dV, 0, 0)
-    assert ( E[:, 2] / dV == d_E[:, 2] ).all()
+    d_E     = diffuse_electrons(np.copy(E), HPXeEL(dV=dV, diff_xy=0, diff_z=0))
+    assert (E[:, 2] / dV == d_E[:, 2]).all()
 
 def test_box_lengths(b=None):
     if b == None: b = Box(x_min = -335 * units.mm,

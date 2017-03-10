@@ -67,7 +67,7 @@ class HPXeEL:
     def ionization_electrons(self, E):
         return self.rf * E / self.Wi
 
-    def el_photons(self, E):
+    def el_photons(self, E): # ??
         return self.Ng * E / self.rf
 
 def gather_montecarlo_hits(filepath):
@@ -75,6 +75,8 @@ def gather_montecarlo_hits(filepath):
     gather_montecarlo_hits is a dictionary with where a key is an event number
     and a value is a pandas DataFrame with all of the hits (hit=[x,y,z,E]) for
     that event.
+
+    should this be a method in HPXeEL?
     """
     f      = tb.open_file(filepath, 'r')
     ptab   = f.root.MC.MCTracks
@@ -103,29 +105,31 @@ def gather_montecarlo_hits(filepath):
     f.close()
     return Events
 
-def generate_ionization_electrons(hits, Wi, ie_fano):
+def generate_ionization_electrons(hits, hpxe):
     """
     -Get the hits (a pandas DF contianing all the hits for an event)
     -generate ionization electrons for each hit
     -separate the electrons from each hit in a dictionary. keeping electrons
     from different hits separate because all the electrons from one hit will
     share the same TrackingPlaneResponseBox
+
+    Should this be a method hin HPXeEL?
     """
     H = {}
-    cols = ['x', 'y', 'z']
     for i, h in enumerate(hits):
-        n_ie  = h[3] / Wi
-        n_ie += np.random.normal(scale=np.sqrt(h[3] / Wi * ie_fano))
+        n_ie  = hpxe.ionization_electrons(h[3])
+        n_ie += np.random.normal(scale=np.sqrt(n_ie * hpxe.ie_fano))
         E     = np.empty((int(round(n_ie)), 3), dtype=np.float32)
         E[:]  = h[:3]
         H[i]  = E
-        #H[i] = pd.DataFrame(data=E, columns=cols, dtype=np.float32)
     return H
 
-def diffuse_electrons(E, dV, diff_xy, diff_z):
+def diffuse_electrons(E, hpxe):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
+
+    should this be a method in HPXeEL?
     """
     # Avoid modifying in place?
     E = np.copy(E)
@@ -135,11 +139,11 @@ def diffuse_electrons(E, dV, diff_xy, diff_z):
     n_ie = len(E)
 
     # mu=0, sig=lat_diff * sqrt(m)
-    lat_drift = np.random.normal(scale=diff_xy * np.array([sd, sd]).T, size=(n_ie,2))
-    long_drift= np.random.normal(scale= diff_z * sd,                   size=(n_ie,))
+    lat_drift = np.random.normal(scale=hpxe.diff_xy * np.array([sd, sd]).T, size=(n_ie,2))
+    long_drift= np.random.normal(scale=hpxe.diff_z  * sd,                   size=(n_ie,))
     E[:, :2] +=  lat_drift
     E[:,  2] += long_drift
-    E[:,  2] /= dV
+    E[:,  2] /= hpxe.dV
 
     return E # mod in place?
 

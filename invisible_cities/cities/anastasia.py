@@ -74,18 +74,19 @@ class Anastasia(DetectorResponseCity):
             # SLOWER IN PYTHON 2
             for ev in Events.values():
                 if processed_events == self.NEVENTS: break
-                ev_tp = np.zeros((self.tpb.x_dim, self.tpb.y_dim, self.tpb.z_dim),
+                ev_tp = np.zeros((self.tpb.x_dim,
+                                  self.tpb.y_dim,
+                                  self.tpb.z_dim),
                                  dtype=np.float32)
 
-                ##TODO decide if this is DF or np array
-                # Hits is a dictionary mapping hit index to dataframe of electrons
-                Hits = generate_ionization_electrons(ev.values, self.hpxe.Wi, self.hpxe.ie_fano)
+                # Hits is a dict mapping hit ind to a np.array of ionized e-
+                Hits = generate_ionization_electrons(ev.values, self.hpxe)
 
                 # SLOWER IN PYTHON 2
                 for i, h in Hits.items():
 
                     # Call diffuse_electrons
-                    E = diffuse_electrons(h, self.hpxe.dV, self.hpxe.diff_xy, self.hpxe.diff_z)
+                    E = diffuse_electrons(h, self.hpxe)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
                     tprb = TrackingPlaneResponseBox(ev.values[i, 0],
