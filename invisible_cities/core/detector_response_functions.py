@@ -7,7 +7,6 @@
 import numpy  as np
 import tables as tb
 import pandas as pd
-
 from   invisible_cities.core.system_of_units_c import units
 
 class HPXeEL:
@@ -157,7 +156,7 @@ def SiPM_response(rb, e, z_bound, gain):
     DY2 = np.array([dy2 for i in range(rb.y_dim)], dtype=np.float32)
 
     return np.array(
-           gain / (4.0 * (z_bound[0] - z_bound[1])) \
+           gain / (4.0 * (z_bound[0] -  z_bound[1])) \
            * (1.0 / np.sqrt(DX2 + DY2 + z_bound[1]**2) \
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)),
            dtype=np.float32)
@@ -184,6 +183,7 @@ def bin_EL(E, hpxe, rb):
 
     for i, (e, f, ts) in enumerate(zip(E, fTS, TS)):
         for j, z in enumerate(rb.z_pos):
+
             # electron enters EL between z and z + z_pitch
             if j == f:
                 # Calculate gain in first responsive slice
@@ -194,6 +194,7 @@ def bin_EL(E, hpxe, rb):
                 ib  = [s_d, s_d - fg * hpxe.d]
                 FG[i, j] = fg
                 IB[i, j] = np.array(ib, dtype=np.float32)
+
             # electron is still crossing EL
             elif j > f and z < e[2] + hpxe.t_el and f > 0:
                 # electron crossing EL over entire time bin
@@ -203,6 +204,7 @@ def bin_EL(E, hpxe, rb):
                     ib  = [s_d, s_d - fg * hpxe.d]
                     FG[i, j] = fg
                     IB[i, j] = np.array(ib, dtype=np.float32)
+
                 # electron finishes crossing EL during time bin
                 else:
                     fg  = (e[2] + hpxe.t_el - z) / hpxe.t_el

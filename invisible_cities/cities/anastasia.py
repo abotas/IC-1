@@ -62,6 +62,9 @@ class Anastasia(DetectorResponseCity):
             Events = gather_montecarlo_hits(fn)
 
             for ev in Events:
+                ev_tp = np.zeros((self.tpb.x_dim, self.tpb.y_dim, self.tpb.z_dim),
+                                 dtype=np.float32)
+
                 ##TODO decide if this is DF or np array
                 # Hits is a dictionary mapping hit index to dataframe of electrons
                 Hits = generate_ionization_electrons(ev.values, hpxe.Wi, hpxe.ie_fano)
@@ -71,22 +74,22 @@ class Anastasia(DetectorResponseCity):
                     electrons = diffuse_electrons(h, hpxe.dV, hpxe.xy_diff, hpxe.z_diff)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    resp_box = TrackingPlaneResponseBox(h[0], h[1], h[2])
+                    tprb = TrackingPlaneResponseBox(h[0], h[1], h[2])
 
                     # Determine where elecetrons will produce photons in EL
                     F, IB = bin_EL(E, self.hpxe, tprb)
 
                     # Get TrackingPlaneResponseBox response
-                    hmap = np.zeros((tprb.x_dim, tprb.y_dim, tprb.z_dim), dtype=np.float32)
                     for e, e_f, e_ib   in zip(E, F, IB): # electrons
                         for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
-                            hmap[:,:,i] += SiPM_response(tprb, e, ib, f)
+                             tprb.R += SiPM_response(tprb, e, ib, f) # or mod tprb??
 
                     # Integrate response into larger tracking plane
-
-
+                    xs, xf, ys, yf, zs, zf = tbrp.situate(self.tpb)
+                    ev_tp[xs: xf, ys: yf, zs: zf] += tbrp.R
 
                 # Add poisson noise to SiPM responses
+                
 
                 # Write SiPM map to file
 

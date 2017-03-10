@@ -207,21 +207,24 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
 
         should this be a method in TrackingPlaneBox or TrackingPlaneResponseBox?
         """
-        if  self.x_pitch != tpb.x_pitch or
+        if (self.x_pitch != tpb.x_pitch or
             self.y_pitch != tpb.y_pitch or
-            self.z_pitch != tpb.z_pitch:
+            self.z_pitch != tpb.z_pitch):
             raise ValueError('self and tpb have incompatible pitch')
 
         # Compute min indices
         ix_s = (self.x_min - tpb.x_min) / tpb.x_pitch
         iy_s = (self.y_min - tpb.y_min) / tpb.y_pitch
         iz_s = (self.z_min - tpb.z_min) / tpb.z_pitch
-        in not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) is not an integer')
-        in not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) is not an integer')
-        in not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) is not an integer')
+        if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) is not an integer')
+        if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) is not an integer')
+        if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) is not an integer')
 
-        # compute max indices
-        ix_f = ix_s + self.x_dim + 1
-        iy_f = iy_s + self.y_dim + 1
-        iz_f = iz_s + self.z_dim + 1
-        return ix_s, ix_f, iy_s, iy_f, iz_s, iz_f
+        # compute max indices --non incluseive-- 
+        ix_f = ix_s + self.x_dim
+        iy_f = iy_s + self.y_dim
+        iz_f = iz_s + self.z_dim
+
+        inds = np.array([ix_s, ix_f, iy_s, iy_f, iz_s, iz_f], dtype=np.float32)
+        inds = np.array(np.round(inds), dtype=np.int32)
+        return inds
