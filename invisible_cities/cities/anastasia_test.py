@@ -277,8 +277,19 @@ def test_tracking_plane_response_box_dim():
     assert rb.y_dim==yd
     assert rb.z_dim==zd
 
-# TODO: USE FIXTURES CORRECTLY
-# TODO: explore more parameter space of (z_dim, t_el, z_pitch)
+def test_tracking_plane_response_box_situate():
+    for x,y,z in [[-235*units.mm, -235*units.mm,   0*units.mus],
+                  [   0*units.mm,    0*units.mm,  50*units.mus],
+                  [ 235*units.mm,  235*units.mm, 530*units.mus]]:
+        tp   = 10 * units.mm
+        zp   =  2 * units.mus
+        tpb  = TrackingPlaneBox(               x_pitch=tp, y_pitch=tp, z_pitch=zp)
+        rb   = TrackingPlaneResponseBox(x,y,z, x_pitch=tp, y_pitch=tp, z_pitch=zp)
+        inds = rb.situate(tpb)
+        assert (rb.x_pos == tpb.x_pos[inds[0]: inds[1]]).all()
+        assert (rb.y_pos == tpb.y_pos[inds[2]: inds[3]]).all()
+        assert (rb.z_pos == tpb.z_pos[inds[4]: inds[5]]).all()
+
 def test_bin_EL_gain():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
