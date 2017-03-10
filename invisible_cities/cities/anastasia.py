@@ -10,17 +10,19 @@ import tables as tb
 import pandas as pd
 import invisible_cities.reco.tbl_functions as tbl
 
-from invisible_cities.cities.base_cities import DetectorResponseCity
-from invisible_cities.core.configure     import configure, print_configuration, \
-    read_config_file
+from invisible_cities.cities.base_cities               import DetectorResponseCity
+from invisible_cities.core.configure                   import configure, \
+     print_configuration, \
+      read_config_file
 from invisible_cities.core.detector_response_functions import HPXeEL,  \
      gather_montecarlo_hits, \
-     generate_ionization_electrons, diffuse_electrons, \
-     bin_EL, SiPM_response
+     generate_ionization_electrons, \
+     diffuse_electrons, \
+     bin_EL, \
+     SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
      TrackingPlaneResponseBox
-
-from invisible_cities.core.system_of_units_c import units
+from invisible_cities.core.system_of_units_c           import units
 
 
 class Anastasia(DetectorResponseCity):
@@ -108,12 +110,12 @@ class Anastasia(DetectorResponseCity):
                     xs, xf, ys, yf, zs, zf = tprb.situate(self.tpb)
                     ev_tp[xs: xf, ys: yf, zs: zf] += tprb.R
 
-                # Add poisson noise to SiPM responses
+                # Make a flag to turn this off?
                 ev_tp += np.random.poisson(ev_tp)
 
                 # Write SiPM map to file
                 SiPM_resp.append([ev_tp])
-                processed_events    += 1
+                processed_events += 1
 
         print(f_out)
         f_out.close()
