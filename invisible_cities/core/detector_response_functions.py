@@ -38,8 +38,8 @@ class HPXeEL:
                       Wi      =  16    * units.eV,
                       ie_fano =   0.15           ,
                       g_fano  =   0.1            ,
-                      diff_xy =  10    * units.mm/np.sqrt(1 * units.m),
-                      diff_z  =   3    * units.mm/np.sqrt(1 * units.m),
+                      diff_xy =  10    * units.mm/np.sqrt(units.m),
+                      diff_z  =   3    * units.mm/np.sqrt(units.m),
                       rf      =   1):
 
         self.EP      = EP
@@ -52,12 +52,14 @@ class HPXeEL:
         self.t_el    = t_el
         self.L       = L
         self.YP      = 140 * ep - 116  # in photons per electron bar^-1 cm^-1
-        self.Ng      = self.YP * self.d/units.cm * self.P/units.bar #photons/e
+        self.Ng      = self.YP * self.d/units.cm * self.P/units.bar #photons/e  ######### /units.mm??
         self.Ws      = Ws
         self.Wi      = Wi
         self.rf      = rf
         self.ie_fano = ie_fano
         self. g_fano =  g_fano
+        self.diff_xy = diff_xy
+        self.diff_z  = diff_z
 
     def scintillation_photons(self, E):
         return E / self.Ws
@@ -120,7 +122,7 @@ def generate_ionization_electrons(hits, Wi, ie_fano):
         #H[i] = pd.DataFrame(data=E, columns=cols, dtype=np.float32)
     return H
 
-def diffuse_electrons(E, dV, xy_diff, z_diff):
+def diffuse_electrons(E, dV, diff_xy, diff_z):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
@@ -129,12 +131,12 @@ def diffuse_electrons(E, dV, xy_diff, z_diff):
     E = np.copy(E)
 
     # sqrt dist from EL grid
-    sd = np.sqrt(E[:, 2] / float(units.m))
+    sd = np.sqrt(E[:, 2] / units.m)
     n_ie = len(E)
 
     # mu=0, sig=lat_diff * sqrt(m)
-    lat_drift = np.random.normal(scale=xy_diff * np.array([sd, sd]).T, size=(n_ie,2))
-    long_drift= np.random.normal(scale= z_diff * sd,                   size=(n_ie,))
+    lat_drift = np.random.normal(scale=diff_xy * np.array([sd, sd]).T, size=(n_ie,2))
+    long_drift= np.random.normal(scale= diff_z * sd,                   size=(n_ie,))
     E[:, :2] +=  lat_drift
     E[:,  2] += long_drift
     E[:,  2] /= dV

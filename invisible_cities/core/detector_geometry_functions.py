@@ -196,16 +196,8 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
 
     def situate(self, tpb):
         """
-        add the response from the responsive box into the larger tracking plane box
-
-        hr is the SiPM response to all the photons produced by all the ionization
-        electrons produced by a hit
-
-        evr is the SiPM response of the entire tracking plane to an event.
-
-        tpb is the tracking plane box defining the geometry of tpb
-
-        should this be a method in TrackingPlaneBox or TrackingPlaneResponseBox?
+        situate returns the indices indicating where in the larger
+        TrackingPlaneBox (tpb), TrackingPlaneResponseBox (self) is
         """
         if (self.x_pitch != tpb.x_pitch or
             self.y_pitch != tpb.y_pitch or
@@ -220,7 +212,7 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) is not an integer')
         if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) is not an integer')
 
-        # compute max indices --non incluseive-- 
+        # compute max indices --non inclusive--
         ix_f = ix_s + self.x_dim
         iy_f = iy_s + self.y_dim
         iz_f = iz_s + self.z_dim
