@@ -11,13 +11,14 @@ import pandas as pd
 import invisible_cities.reco.tbl_functions as tbl
 
 from invisible_cities.cities.base_cities import DetectorResponseCity
-from invisible_cities.core.configure  import configure, print_configuration, \
+from invisible_cities.core.configure     import configure, print_configuration, \
     read_config_file
 from invisible_cities.core.detector_response_functions import HPXeEL,  \
      gather_montecarlo_hits, \
      generate_ionization_electrons, diffuse_electrons, \
      bin_EL, SiPM_response
-from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, TrackingPlaneResponseBox
+from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
+     TrackingPlaneResponseBox
 
 from invisible_cities.core.system_of_units_c import units
 
@@ -33,7 +34,10 @@ class Anastasia(DetectorResponseCity):
                  nprint     = 10000,
 
                  # Parameters added at this level
-                 NEVENTS = 0):
+                 NEVENTS = 0,
+                 wx_dim  = 8,
+                 wy_dim  = 8,
+                 wz_dim  = 4):
 
         DetectorResponseCity.__init__(self,
                                       run_number = run_number,
@@ -42,8 +46,10 @@ class Anastasia(DetectorResponseCity):
                                       nprint     = nprint,
                                       tpb        = tpb,
                                       hpxe       = hpxe)
-
         self.NEVENTS = NEVENTS
+        self.wx_dim  = wx_dim
+        self.wy_dim  = wy_dim
+        self.wz_dim  = wz_dim
 
     def run(self):
         """genereate the SiPM maps for each event"""
@@ -84,7 +90,10 @@ class Anastasia(DetectorResponseCity):
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
                     tprb = TrackingPlaneResponseBox(ev.values[i, 0],
                                                     ev.values[i, 1],
-                                                    ev.values[i, 2])
+                                                    ev.values[i, 2],
+                                                    x_dim = self.wx_dim,
+                                                    y_dim = self.wy_dim,
+                                                    z_dim = self.wz_dim)
 
                     # Determine where elecetrons will produce photons in EL
                     F, IB = bin_EL(E, self.hpxe, tprb)
@@ -103,9 +112,7 @@ class Anastasia(DetectorResponseCity):
 
                 # Write SiPM map to file
                 SiPM_resp.append([ev_tp])
-
                 processed_events    += 1
-
 
         print(f_out)
         f_out.close()
@@ -114,10 +121,32 @@ def ANASTASIA(argv=sys.argv):
 
     conf = configure(argv)
 
-    A = Anastasia(HPXeEL(), TrackingPlaneBox(),
-        NEVENTS  =      conf['NEVENTS'],
+    A = Anastasia(HPXeEL(dV      = conf['dV']   * units.mm/units.mus,
+                         d       = conf['d']    * units.mm,
+                         t       = conf['t']    * units.mm,
+                         t_el    = conf['t_el'] * units.mus,
+                         Wi      = conf['Wi']   * units.eV,
+                         rf      = conf['rf']     ,
+                         ie_fano = conf['ie_fano'],
+                         g_fano  = conf['g_fano'] ,
+                         diff_xy = conf['diff_xy'] * units.mm/np.sqrt(units.m) ,
+                         diff_z  = conf['diff_z']  * units.mm/np.sqrt(units.m)),
+        TrackingPlaneBox(x_min   = conf['x_min']   * units.mm  ,
+                         x_max   = conf['x_max']   * units.mm  ,
+                         y_min   = conf['y_min']   * units.mm  ,
+                         y_max   = conf['y_max']   * units.mm  ,
+                         z_min   = conf['z_min']   * units.mus ,
+                         z_max   = conf['z_max']   * units.mus ,
+                         x_pitch = conf['x_pitch'] * units.mm  ,
+                         y_pitch = conf['y_pitch'] * units.mm  ,
+                         z_pitch = conf['z_pitch'] * units.mus),
+
         files_in = glob(conf['FILE_IN']),
-        file_out =      conf['FILE_OUT'])
+        NEVENTS  = conf['NEVENTS'],
+        file_out = conf['FILE_OUT'],
+        wx_dim   = conf['wx_dim'],
+        wy_dim   = conf['wy_dim'],
+        wz_dim   = conf['wz_dim'])
 
     t0 = time(); A.run(); t1 = time();
     dt = t1 - t0

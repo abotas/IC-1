@@ -51,7 +51,7 @@ class TrackingPlaneBox(Box):
                        z_max =  530 * units.mus,
                        x_pitch = 10 * units.mm,
                        y_pitch = 10 * units.mm,
-                       z_pitch = 2  * units.mus):
+                       z_pitch =  2 * units.mus):
 
         Box.__init__(self, x_min=x_min, x_max=x_max, y_min=y_min,
                            y_max=y_max, z_min=z_min, z_max=z_max)
@@ -202,6 +202,9 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         if (self.x_pitch != tpb.x_pitch or
             self.y_pitch != tpb.y_pitch or
             self.z_pitch != tpb.z_pitch):
+            print(self.x_pitch, tpb.x_pitch)
+            print(self.y_pitch, tpb.y_pitch)
+            print(self.z_pitch, tpb.z_pitch)
             raise ValueError('self and tpb have incompatible pitch')
 
         # Compute min indices

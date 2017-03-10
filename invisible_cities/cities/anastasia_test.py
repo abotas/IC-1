@@ -45,9 +45,9 @@ z_max {z_max}
 x_pitch {x_pitch}
 y_pitch {y_pitch}
 z_pitch {z_pitch}
-x_dim {x_dim}
-y_dim {y_dim}
-z_dim {z_dim}
+wx_dim {wx_dim}
+wy_dim {wy_dim}
+wz_dim {wz_dim}
 t_el {t_el}
 t {t}
 d {d}
@@ -68,27 +68,27 @@ def config_file_spec_with_tmpdir(tmpdir):
                 g_fano      =  0.15,
                 rf          =  1.0 ,
                 Wi          = 22.4 ,
-                diff_z      =  3    * units.mm/np.sqrt(units.m),
-                diff_xy     = 10    * units.mm/np.sqrt(units.m),
-                dV          =  1.0  * units.mm/units.mus,
-                x_min = -235 * units.mm,
-                x_max =  235 * units.mm,
-                y_min = -235 * units.mm,
-                y_max =  235 * units.mm,
-                z_min =  0   * units.mus,
-                z_max =  530 * units.mus,
-                t = 5 * units.mm,
-                d = 5 * units.mm,
-                x_dim = 8,
-                y_dim = 8,
-                z_dim = 2,
-                x_pitch =   10   * units.mm,
-                y_pitch =   10   * units.mm,
-                z_pitch =    2.0 * units.mus,
-                t_el    =    2   * units.mus)
+                diff_z      =  3   ,
+                diff_xy     = 10   ,
+                dV          =  1.0 ,
+                x_min = -235,
+                x_max =  235,
+                y_min = -235,
+                y_max =  235,
+                z_min =  0  ,
+                z_max =  530,
+                wx_dim = 8,
+                wy_dim = 8,
+                wz_dim = 2,
+                x_pitch = 10,
+                y_pitch = 10,
+                z_pitch =  2,
+                t_el = 2,
+                t    = 5,
+                d    = 5)
 
 @mark.slow
-def test_command_line_Anastasia(config_tmpdir):
+def test_command_line_anastasia(config_tmpdir):
     config_file_spec = config_file_spec_with_tmpdir(config_tmpdir)
     config_file_contents = config_file_format.format(**config_file_spec)
     conf_file_name = str(config_tmpdir.join('test-2-Anast.conf'))
