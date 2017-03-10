@@ -270,6 +270,13 @@ def test_tracking_plane_response_box_helper_find_response_borders_oddd_dim():
     assert ma == rc + (dim - 1) / 2.0 * pitch
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
 
+def test_tracking_plane_response_box_dim():
+    [xd, yd, zd] = [6,7,3]
+    rb = TrackingPlaneResponseBox(0,0,0, x_dim=xd, y_dim=yd, z_dim=zd)
+    assert rb.x_dim==xd
+    assert rb.y_dim==yd
+    assert rb.z_dim==zd
+
 # TODO: USE FIXTURES CORRECTLY
 # TODO: explore more parameter space of (z_dim, t_el, z_pitch)
 def test_bin_EL_gain():
