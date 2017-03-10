@@ -135,16 +135,14 @@ def diffuse_electrons(E, hpxe):
     E = np.copy(E)
 
     # sqrt dist from EL grid
-    sd = np.sqrt(E[:, 2] / units.m)
-    n_ie = len(E)
+    sd = np.sqrt(E[:, 2] / units.mm * units.m)
 
     # mu=0, sig=lat_diff * sqrt(m)
-    lat_drift = np.random.normal(scale=hpxe.diff_xy * np.array([sd, sd]).T, size=(n_ie,2))
-    long_drift= np.random.normal(scale=hpxe.diff_z  * sd,                   size=(n_ie,))
-    E[:, :2] +=  lat_drift
+    latr_drift= np.random.normal(scale=hpxe.diff_xy * np.array([sd, sd]).T)
+    long_drift= np.random.normal(scale=hpxe.diff_z  * sd, size=(len(E),))
+    E[:, :2] += latr_drift
     E[:,  2] += long_drift
     E[:,  2] /= hpxe.dV
-
     return E # mod in place?
 
 def SiPM_response(rb, e, z_bound, gain):
@@ -223,4 +221,5 @@ def bin_EL(E, hpxe, rb):
 
     F  = FG * hpxe.Ng / hpxe.rf
     F += np.random.normal(scale=np.sqrt(F * hpxe.g_fano))
+    
     return F, IB
