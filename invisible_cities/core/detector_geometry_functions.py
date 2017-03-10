@@ -77,7 +77,11 @@ class TrackingPlaneBox(Box):
         self.z_pos = np.linspace(self.z_min,  self.z_max,
                                 (self.z_max - self.z_min) / self.z_pitch + 1,
                                  dtype=np.float32)
+
         self.P = (self.x_pos, self.y_pos, self.z_pos)
+        self.x_dim = len(self.x_pos)
+        self.y_dim = len(self.y_pos)
+        self.z_dim = len(self.z_pos)
 
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
@@ -158,9 +162,10 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         if y_dim * y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
         if z_dim * z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
 
-        self.x_dim    = x_dim
-        self.y_dim    = y_dim
-        self.z_dim    = z_dim   # initialize a response box
+        # Written in base class
+        #self.x_dim    = x_dim
+        #self.y_dim    = y_dim
+        #self.z_dim    = z_dim   # initialize a response box
         self.R        = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
 
         self.x_absmin = x_absmin
@@ -169,7 +174,6 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         self.x_absmax = x_absmax
         self.y_absmax = y_absmax
         self.z_absmax = z_absmax
-
 
         # Compute borders
         self.rx_center, self.x_min, self.x_max = find_response_borders(
