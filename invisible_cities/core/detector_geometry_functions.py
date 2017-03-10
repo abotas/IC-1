@@ -162,12 +162,6 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         if y_dim * y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
         if z_dim * z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
 
-        # Written in base class
-        #self.x_dim    = x_dim
-        #self.y_dim    = y_dim
-        #self.z_dim    = z_dim   # initialize a response box
-        self.R        = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
-
         self.x_absmin = x_absmin
         self.y_absmin = y_absmin
         self.z_absmin = z_absmin
@@ -193,6 +187,8 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                                   x_pitch = x_pitch,
                                   y_pitch = y_pitch,
                                   z_pitch = z_pitch)
+                                  
+        self.R = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
 
     def situate(self, tpb):
         """

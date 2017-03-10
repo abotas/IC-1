@@ -52,7 +52,7 @@ class HPXeEL:
         self.t_el    = t_el
         self.L       = L
         self.YP      = 140 * ep - 116  # in photons per electron bar^-1 cm^-1
-        self.Ng      = self.YP * self.d/units.cm * self.P/units.bar #photons/e  ######### /units.mm??
+        self.Ng      = self.YP * self.d/units.cm * self.P/units.bar #photons/e  TODO: divide by cm?
         self.Ws      = Ws
         self.Wi      = Wi
         self.rf      = rf
@@ -67,7 +67,8 @@ class HPXeEL:
     def ionization_electrons(self, E):
         return self.rf * E / self.Wi
 
-    def el_photons(self, E): # ??
+    #Ng is photons / electron, so why is this dependent on E
+    def el_photons(self, E):
         return self.Ng * E / self.rf
 
 def gather_montecarlo_hits(filepath):
@@ -75,8 +76,6 @@ def gather_montecarlo_hits(filepath):
     gather_montecarlo_hits is a dictionary with where a key is an event number
     and a value is a pandas DataFrame with all of the hits (hit=[x,y,z,E]) for
     that event.
-
-    should this be a method in HPXeEL?
     """
     f      = tb.open_file(filepath, 'r')
     ptab   = f.root.MC.MCTracks
@@ -90,11 +89,9 @@ def gather_montecarlo_hits(filepath):
 
         # Check for new events
         if ev != row['event_indx'] or row.nrow == ptab.nrows - 1:
-
             # Bad karma? A trick to record the last event in the file
             if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
             else:                          f_row = row.nrow
-
             ev_hits = np.empty((f_row - s_row, 4), dtype=np.float32)
             ev_hits[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
             ev_hits[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
@@ -128,6 +125,9 @@ def diffuse_electrons(E, hpxe):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
+
+    E a np.array of electrons
+    hpxe is an instance of HPXeEL
 
     should this be a method in HPXeEL?
     """
@@ -221,6 +221,6 @@ def bin_EL(E, hpxe, rb):
                     #if not np.allclose(hpxe.t, s_d - fg * hpxe.t_el):
                     #    raise ValueError('final integ boundary != hpxe.t')
 
-    F  = FG * hpxe.Ng
+    F  = FG * hpxe.Ng / hpxe.rf
     F += np.random.normal(scale=np.sqrt(F * hpxe.g_fano))
     return F, IB
