@@ -193,3 +193,35 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                                   x_pitch = x_pitch,
                                   y_pitch = y_pitch,
                                   z_pitch = z_pitch)
+
+    def situate(self, tpb):
+        """
+        add the response from the responsive box into the larger tracking plane box
+
+        hr is the SiPM response to all the photons produced by all the ionization
+        electrons produced by a hit
+
+        evr is the SiPM response of the entire tracking plane to an event.
+
+        tpb is the tracking plane box defining the geometry of tpb
+
+        should this be a method in TrackingPlaneBox or TrackingPlaneResponseBox?
+        """
+        if  self.x_pitch != tpb.x_pitch or
+            self.y_pitch != tpb.y_pitch or
+            self.z_pitch != tpb.z_pitch:
+            raise ValueError('self and tpb have incompatible pitch')
+
+        # Compute min indices
+        ix_s = (self.x_min - tpb.x_min) / tpb.x_pitch
+        iy_s = (self.y_min - tpb.y_min) / tpb.y_pitch
+        iz_s = (self.z_min - tpb.z_min) / tpb.z_pitch
+        in not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) is not an integer')
+        in not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) is not an integer')
+        in not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) is not an integer')
+
+        # compute max indices
+        ix_f = ix_s + self.x_dim + 1
+        iy_f = iy_s + self.y_dim + 1
+        iz_f = iz_s + self.z_dim + 1
+        return ix_s, ix_f, iy_s, iy_f, iz_s, iz_f
