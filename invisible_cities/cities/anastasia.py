@@ -8,6 +8,7 @@ import sys
 import numpy  as np
 import tables as tb
 import pandas as pd
+import invisible_cities.reco.tbl_functions as tbl
 
 from invisible_cities.cities.base_cities import DetectorResponseCity
 from invisible_cities.core.configure  import configure, print_configuration, \
@@ -43,18 +44,19 @@ class Anastasia(DetectorResponseCity):
 
         self.NEVENTS = NEVENTS
 
-        filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
-        atom    = tb.Atom.from_dtype(np.dtype('Float32'))
-        self.f_out   = tb.open_file(self.output_file, 'w')
-        self.tmaps   = f_out.create_earray(f_out.root, 'maps', atom,
-                                     (0, self.xydim, self.xydim, self.zdim),
-                                     filters=filters)
-
     def run(self):
         """genereate the SiPM maps for each event"""
 
-        processed_events = 0
+        f_out = tb.open_file(self.output_file, 'w')
+        f_out.create_earray(SiPM_resp,
+                    atom  = tb.Float32Atom(),
+                    shape = (0, self.tplane_box.x_dim,
+                                self.tplane_box.y_dim,
+                                self.tplane_box.z_dim),
+                    expectedrows = self.NEVENTS,
+                    filters = tbl.filters(self.compression))
 
+        processed_events = 0
         # Loop over each desired file in filespath
         for fn in self.input_files:
 
@@ -74,11 +76,11 @@ class Anastasia(DetectorResponseCity):
                     electrons = diffuse_electrons(h, hpxe.dV, hpxe.xy_diff, hpxe.z_diff)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = TrackingPlaneResponseBox(h[0], h[1], h[2])
+                    tprb  = TrackingPlaneResponseBox(h[0], h[1], h[2])
 
                     # Determine where elecetrons will produce photons in EL
                     F, IB = bin_EL(E, self.hpxe, tprb)
-
+                    
                     # Get TrackingPlaneResponseBox response
                     for e, e_f, e_ib   in zip(E, F, IB): # electrons
                         for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
@@ -89,14 +91,13 @@ class Anastasia(DetectorResponseCity):
                     ev_tp[xs: xf, ys: yf, zs: zf] += tbrp.R
 
                 # Add poisson noise to SiPM responses
-                
+                ev_tp += np.random.poisson(lam=ev_tp)
 
                 # Write SiPM map to file
-
+                SiPM_resp.append([ev_tp])
 
                 processed_events    += 1
                 if processed_events == self.NEVENTS: break
-
 
         print(self.f_out)
         self.f_out.close()
