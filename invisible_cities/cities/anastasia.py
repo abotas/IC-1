@@ -76,6 +76,7 @@ class Anastasia(DetectorResponseCity):
             # SLOWER IN PYTHON 2
             for ev in Events.values():
                 if processed_events == self.NEVENTS: break
+
                 ev_tp = np.zeros((self.tpb.x_dim,
                                   self.tpb.y_dim,
                                   self.tpb.z_dim),

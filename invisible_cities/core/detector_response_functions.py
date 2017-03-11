@@ -68,8 +68,8 @@ class HPXeEL:
         return self.rf * E / self.Wi
 
     #Ng is photons / electron, so why is this dependent on E
-    def el_photons(self, E):
-        return self.Ng * E / self.rf
+    def el_photons(self):
+        return self.Ng / self.rf
 
 def gather_montecarlo_hits(filepath):
     """
@@ -221,5 +221,5 @@ def bin_EL(E, hpxe, rb):
 
     F  = FG * hpxe.Ng / hpxe.rf
     F += np.random.normal(scale=np.sqrt(F * hpxe.g_fano))
-    
+
     return F, IB
