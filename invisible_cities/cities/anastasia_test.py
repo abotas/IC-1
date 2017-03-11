@@ -220,11 +220,11 @@ def test_HPXeEL_attributes():
     assert np.isclose(D.Ng, D.YP * D.d / units.cm * D.P / units.bar)
 
 def test_HPXeEL_methods():
-    D = HPXeEL()
+    D = HPXeEL(rf=.1)
     energy = np.array([2 * units.keV, 3 * units.keV], dtype=np.float32)
-    assert (D.scintillation_photons(energy) == energy * D.rf / D.Ws).all()
+    assert (D.scintillation_photons(energy) == energy        / D.Ws).all()
     assert (D.ionization_electrons (energy) == energy * D.rf / D.Wi).all()
-    assert (D.el_photons           (energy) == energy * D.Ng / D.rf).all()
+    assert (D.el_photons()                  == D.Ng / D.rf)
 
 def test_tracking_plane_response_box_helper_find_response_borders_even_dim():
     hits   =   5.2
@@ -270,19 +270,45 @@ def test_tracking_plane_response_box_situate():
         assert (rb.y_pos == tpb.y_pos[inds[2]: inds[3]]).all()
         assert (rb.z_pos == tpb.z_pos[inds[4]: inds[5]]).all()
 
-def test_bin_EL_gain():
+def test_bin_EL_gain_3mus():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
-    b0  = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5)
+    b0  = TrackingPlaneResponseBox(0, 0,  5.5 * units.mus, z_dim=5, z_pitch=2*units.mus)
     F, IB = bin_EL(E, EL, b0)
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
     assert np.allclose(F[0, 0], 0)
-    assert np.allclose(F[0, 1], gf1 * EL.Ng)
-    assert np.allclose(F[0, 2], gf2 * EL.Ng)
-    assert np.allclose(F[0, 3], gf3 * EL.Ng)
+    assert np.allclose(F[0, 1], gf1 * EL.Ng / EL.rf)
+    assert np.allclose(F[0, 2], gf2 * EL.Ng / EL.rf)
+    assert np.allclose(F[0, 3], gf3 * EL.Ng / EL.rf)
+    assert np.allclose(F[0, 4], 0)
+
+def test_bin_EL_gain_2mus():
+    z   = 5.3 * units.mus
+    E   = np.array([[0, 0, z]], dtype=np.float32)
+    EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=2*units.mus)
+    b0  = TrackingPlaneResponseBox(0, 0, 5.5*units.mus, z_dim=5, z_pitch=2*units.mus)
+    F, IB = bin_EL(E, EL, b0)
+    gf1 = min((b0.z_pos[1] + b0.z_pitch - z) / EL.t_el, 1)
+    gf2 = 1-gf1
+    assert np.allclose(F[0, 0], 0)
+    assert np.allclose(F[0, 1], gf1 * EL.Ng / EL.rf)
+    assert np.allclose(F[0, 2], gf2 * EL.Ng / EL.rf)
+    assert np.allclose(F[0, 3], 0)
+    assert np.allclose(F[0, 4], 0)
+
+def test_bin_EL_gain_noELt():
+    z   = 5.3 * units.mus
+    E   = np.array([[0, 0, z]], dtype=np.float32)
+    EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=.01*units.mus)
+    b0  = TrackingPlaneResponseBox(0, 0, 5.5*units.mus, z_dim=5, z_pitch=2*units.mus)
+    F, IB = bin_EL(E, EL, b0)
+    assert np.allclose(F[0, 0], 0)
+    assert np.allclose(F[0, 1], EL.Ng / EL.rf)
+    assert np.allclose(F[0, 2], 0)
+    assert np.allclose(F[0, 3], 0)
     assert np.allclose(F[0, 4], 0)
 
 def test_bin_EL_integration_boundaries():

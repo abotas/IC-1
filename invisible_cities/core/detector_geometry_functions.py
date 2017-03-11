@@ -187,8 +187,9 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                                   x_pitch = x_pitch,
                                   y_pitch = y_pitch,
                                   z_pitch = z_pitch)
-                                  
+
         self.R = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
+        #Note: x_dim, y_dim, z_dim are saved in TrackingPLaneBox TODO better karma
 
     def situate(self, tpb):
         """
@@ -207,9 +208,9 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
         ix_s = (self.x_min - tpb.x_min) / tpb.x_pitch
         iy_s = (self.y_min - tpb.y_min) / tpb.y_pitch
         iz_s = (self.z_min - tpb.z_min) / tpb.z_pitch
-        if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) is not an integer')
-        if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) is not an integer')
-        if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) is not an integer')
+        if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) not an integer')
+        if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) not an integer')
+        if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')
 
         # compute max indices --non inclusive--
         ix_f = ix_s + self.x_dim
