@@ -168,7 +168,7 @@ class DetectorResponseCity(City):
                  file_out    = None,
                  compression = 'ZLIB4',
                  nprint      = 10000,
-                 tpb         = None,
+                 tpbox       = None,
                  hpxe        = None
                  ):
 
@@ -180,8 +180,8 @@ class DetectorResponseCity(City):
                       compression = compression,
                       nprint      = nprint)
 
-        self.tpb  = tpb
-        self.hpxe = hpxe
+        self.tpbox = tpbox
+        self.hpxe  = hpxe
 
 class SensorResponseCity(City):
     """A SensorResponseCity city extends the City base class adding the

@@ -83,6 +83,13 @@ class TrackingPlaneBox(Box):
         self.y_dim = len(self.y_pos)
         self.z_dim = len(self.z_pos)
 
+        self.resp = np.zeros((self.x_dim, self.y_dim, self.z_dim),
+                              dtype=np.float32)
+
+    def clear_response(self):
+        self.resp = np.zeros((self.x_dim, self.y_dim, self.z_dim),
+                              dtype=np.float32)
+
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
        return ((self.x_min <= x <= self.x_max) and
@@ -122,32 +129,18 @@ def find_response_borders(center, pitch, dim, absmin, absmax):
 
     return r_center, d_min, d_max
 
-class TrackingPlaneResponseBox(TrackingPlaneBox):
+class MiniTrackingPlaneBox(TrackingPlaneBox):
     """
-    A sub Box of TrackingPlaneBox. It is a super class of TrackingPlaneBox
-    because it is a box, and it requires x_pitch, y_pitch, z_pitch params.
+    A box within a TrackingPlaneBox. It is a super class of TrackingPlaneBox.
 
-    (For now it seems useful to separate TrackingPlaneBox and
-    TrackingPlaneRespBox because there are times when we want a box with pitch
-    but it is fixed and there is no need for finding the center)
+    MiniTrackingPlaneBox is useful, more so than just a smaller instance of
+    TrackingPlaneBox, because it is aware it is within a larger TrackingPlaneBox.
 
-    x,y,z_dim define the dimensions of the responsive tracking box within
-    the full size tracking box
-
-    x,y,z_absmin, together with x,y,z pitch circumscribe the entire tracking
-    box. they are necessary to determine the absolute positions of SiPMs in the
-    TrackingPlaneResponseBox. Notice, with only x_pitch=10 and x_dim=3 I can
-    not know if inside Tracking plane box there are SiPMs at x positions
-    0cm, 1cm, 2cm or 0.5cm, 1.5cm, 2.5cm etc
-
-    R is the response of the response box
+    Upon initialization, it self-centers around an x,y,z coordinate within a
+    full-size tracking plane box and can describe its own position within the
+    full-size tpbox with self.situate()
     """
-    def __init__(self, x_center, y_center, z_center,
-                       x_pitch  =   10 * units.mm,
-                       y_pitch  =   10 * units.mm,
-                       z_pitch  =    2 * units.mus,
-
-                       # Parameters added at this level
+    def __init__(self, hit_coords, tpbox,
                        x_dim    =    8,
                        y_dim    =    8,
                        z_dim    =    2,
@@ -158,24 +151,21 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                        y_absmax =  235 * units.mm,
                        z_absmax =  530 * units.mus):
 
-        if x_dim * x_pitch + x_absmin > x_absmax: raise ValueError('xdim too large')
-        if y_dim * y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
-        if z_dim * z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
 
-        self.x_absmin = x_absmin
-        self.y_absmin = y_absmin
-        self.z_absmin = z_absmin
-        self.x_absmax = x_absmax
-        self.y_absmax = y_absmax
-        self.z_absmax = z_absmax
+        self.x_absmin = tpbox.x_min
+        self.y_absmin = tpbox.y_min
+        self.z_absmin = tpbox.z_min
+        self.x_absmax = tpbox.x_max
+        self.y_absmax = tpbox.y_max
+        self.z_absmax = tpbox.z_max
 
         # Compute borders
         self.rx_center, self.x_min, self.x_max = find_response_borders(
-            x_center, x_pitch, x_dim, x_absmin, x_absmax)
+            hit_coords[0], tpbox.x_pitch, x_dim, self.x_absmin, self.x_absmax)
         self.ry_center, self.y_min, self.y_max = find_response_borders(
-            y_center, y_pitch, y_dim, y_absmin, y_absmax)
+            hit_coords[1], tpbox.y_pitch, y_dim, self.y_absmin, self.y_absmax)
         self.rz_center, self.z_min, self.z_max = find_response_borders(
-            z_center, z_pitch, z_dim, z_absmin, z_absmax)
+            hit_coords[2], tpbox.z_pitch, z_dim, self.z_absmin, self.z_absmax)
 
         TrackingPlaneBox.__init__(self,
                                   x_min   = self.x_min,
@@ -184,30 +174,32 @@ class TrackingPlaneResponseBox(TrackingPlaneBox):
                                   y_max   = self.y_max,
                                   z_min   = self.z_min,
                                   z_max   = self.z_max,
-                                  x_pitch = x_pitch,
-                                  y_pitch = y_pitch,
-                                  z_pitch = z_pitch)
+                                  x_pitch = tpbox.x_pitch,
+                                  y_pitch = tpbox.y_pitch,
+                                  z_pitch = tpbox.z_pitch)
 
-        self.R = np.zeros((x_dim, y_dim, z_dim), dtype=np.float32)
+        if x_dim * self.x_pitch + x_absmin > x_absmax: raise ValueError('xdim too large')
+        if y_dim * self.y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
+        if z_dim * self.z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
         #Note: x_dim, y_dim, z_dim are saved in TrackingPLaneBox TODO better karma
 
-    def situate(self, tpb):
+    def situate(self, tpbox):
         """
         situate returns the indices indicating where in the larger
-        TrackingPlaneBox (tpb), TrackingPlaneResponseBox (self) is
+        TrackingPlaneBox (tpbox), TrackingPlaneResponseBox (self) is
         """
-        if (self.x_pitch != tpb.x_pitch or
-            self.y_pitch != tpb.y_pitch or
-            self.z_pitch != tpb.z_pitch):
-            print(self.x_pitch, tpb.x_pitch)
-            print(self.y_pitch, tpb.y_pitch)
-            print(self.z_pitch, tpb.z_pitch)
+        if (self.x_pitch != tpbox.x_pitch or
+            self.y_pitch != tpbox.y_pitch or
+            self.z_pitch != tpbox.z_pitch):
+            print(self.x_pitch, tpbox.x_pitch)
+            print(self.y_pitch, tpbox.y_pitch)
+            print(self.z_pitch, tpbox.z_pitch)
             raise ValueError('self and tpb have incompatible pitch')
 
         # Compute min indices
-        ix_s = (self.x_min - tpb.x_min) / tpb.x_pitch
-        iy_s = (self.y_min - tpb.y_min) / tpb.y_pitch
-        iz_s = (self.z_min - tpb.z_min) / tpb.z_pitch
+        ix_s = (self.x_min - tpbox.x_min) / tpbox.x_pitch
+        iy_s = (self.y_min - tpbox.y_min) / tpbox.y_pitch
+        iz_s = (self.z_min - tpbox.z_min) / tpbox.z_pitch
         if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) not an integer')
         if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) not an integer')
         if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')

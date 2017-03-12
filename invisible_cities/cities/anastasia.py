@@ -21,7 +21,7 @@ from invisible_cities.core.detector_response_functions import HPXeEL,  \
      bin_EL, \
      SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
-     TrackingPlaneResponseBox
+     MiniTrackingPlaneBox
 from invisible_cities.core.system_of_units_c           import units
 
 
@@ -29,7 +29,7 @@ class Anastasia(DetectorResponseCity):
     """
     The city of ANASTASIA
     """
-    def __init__(self, hpxe, tpb,
+    def __init__(self, hpxe, tpbox,
                  run_number = 0,
                  files_in   = None,
                  file_out   = None,
@@ -46,7 +46,7 @@ class Anastasia(DetectorResponseCity):
                                       files_in   = files_in,
                                       file_out   = file_out,
                                       nprint     = nprint,
-                                      tpb        = tpb,
+                                      tpbox      = tpbox,
                                       hpxe       = hpxe)
         self.NEVENTS = NEVENTS
         self.wx_dim  = wx_dim
@@ -59,9 +59,9 @@ class Anastasia(DetectorResponseCity):
         SiPM_resp = f_out.create_earray(f_out.root,
                     atom  = tb.Float32Atom(),
                     name  = 'SiPM_resp',
-                    shape = (0, self.tpb.x_dim,
-                                self.tpb.y_dim,
-                                self.tpb.z_dim),
+                    shape = (0, self.tpbox.x_dim,
+                                self.tpbox.y_dim,
+                                self.tpbox.z_dim),
                     expectedrows = self.NEVENTS,
                     filters = tbl.filters(self.compression))
 
@@ -77,11 +77,6 @@ class Anastasia(DetectorResponseCity):
             for ev in Events.values():
                 if processed_events == self.NEVENTS: break
 
-                ev_tp = np.zeros((self.tpb.x_dim,
-                                  self.tpb.y_dim,
-                                  self.tpb.z_dim),
-                                 dtype=np.float32)
-
                 # Hits is a dict mapping hit ind to a np.array of ionized e-
                 Hits = generate_ionization_electrons(ev, self.hpxe)
 
@@ -92,12 +87,10 @@ class Anastasia(DetectorResponseCity):
                     E = diffuse_electrons(h, self.hpxe)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = TrackingPlaneResponseBox(ev[i, 0],
-                                                    ev[i, 1],
-                                                    ev[i, 2],
-                                                    x_dim = self.wx_dim,
-                                                    y_dim = self.wy_dim,
-                                                    z_dim = self.wz_dim)
+                    tprb = MiniTrackingPlaneBox(ev[i], self.tpbox,
+                                                x_dim = self.wx_dim,
+                                                y_dim = self.wy_dim,
+                                                z_dim = self.wz_dim)
 
                     # Determine where elecetrons will produce photons in EL
                     F, IB = bin_EL(E, self.hpxe, tprb)
@@ -105,17 +98,18 @@ class Anastasia(DetectorResponseCity):
                     # Get TrackingPlaneResponseBox response
                     for e, e_f, e_ib   in zip(E, F, IB): # electrons
                         for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
-                            if f > 0: tprb.R[:,:, i] += SiPM_response(tprb, e, ib, f)
+                            if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
 
                     # Integrate response into larger tracking plane
-                    xs, xf, ys, yf, zs, zf = tprb.situate(self.tpb)
-                    ev_tp[xs: xf, ys: yf, zs: zf] += tprb.R
+                    xs, xf, ys, yf, zs, zf = tprb.situate(self.tpbox)
+                    self.tpbox.resp[xs: xf, ys: yf, zs: zf] += tprb.resp
 
                 # Make a flag to turn this off?
-                ev_tp += np.random.poisson(ev_tp)
+                self.tpbox.resp += np.random.poisson(self.tpbox.resp)
 
                 # Write SiPM map to file
-                SiPM_resp.append([ev_tp])
+                SiPM_resp.append([self.tpbox.resp])
+
                 processed_events += 1
 
         print(f_out)
