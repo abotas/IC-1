@@ -83,7 +83,7 @@ class Anastasia(DetectorResponseCity):
                                  dtype=np.float32)
 
                 # Hits is a dict mapping hit ind to a np.array of ionized e-
-                Hits = generate_ionization_electrons(ev.values, self.hpxe)
+                Hits = generate_ionization_electrons(ev, self.hpxe)
 
                 # SLOWER IN PYTHON 2
                 for i, h in Hits.items():
@@ -92,9 +92,9 @@ class Anastasia(DetectorResponseCity):
                     E = diffuse_electrons(h, self.hpxe)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = TrackingPlaneResponseBox(ev.values[i, 0],
-                                                    ev.values[i, 1],
-                                                    ev.values[i, 2],
+                    tprb = TrackingPlaneResponseBox(ev[i, 0],
+                                                    ev[i, 1],
+                                                    ev[i, 2],
                                                     x_dim = self.wx_dim,
                                                     y_dim = self.wy_dim,
                                                     z_dim = self.wz_dim)

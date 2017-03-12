@@ -73,14 +73,14 @@ class HPXeEL:
 
 def gather_montecarlo_hits(filepath):
     """
-    gather_montecarlo_hits is a dictionary with where a key is an event number
-    and a value is a pandas DataFrame with all of the hits (hit=[x,y,z,E]) for
-    that event.
+    gather_montecarlo_hits gathers all puts all
+
+    file_hits is a dictionary mapping:
+    event_indx (given by nexus) --> np.array containing all the hits for the evt
     """
     f      = tb.open_file(filepath, 'r')
     ptab   = f.root.MC.MCTracks
-    Events = {}
-    cols   = ['x', 'y', 'z', 'E']
+    file_hits = {}
     ev     = ptab[0]['event_indx']
     s_row  = 0
 
@@ -95,12 +95,12 @@ def gather_montecarlo_hits(filepath):
             ev_hits = np.empty((f_row - s_row, 4), dtype=np.float32)
             ev_hits[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
             ev_hits[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
-            Events[ev] = pd.DataFrame(data=ev_hits, columns=cols)
+            file_hits[ev]  = ev_hits
             ev    = row['event_indx']
             s_row = row.nrow
 
     f.close()
-    return Events
+    return file_hits
 
 def generate_ionization_electrons(hits, hpxe):
     """
