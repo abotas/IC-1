@@ -64,30 +64,30 @@ class Anastasia(DetectorResponseCity):
         for fn in self.input_files:
             if processed_events == self.NEVENTS: break
 
-            # Events is a dictionary mapping event index to dataframe of hits
-            Events = gather_montecarlo_hits(fn)
+            # hits_f is a dictionary mapping event_indx to a np.array of hits
+            hits_f = gather_montecarlo_hits(fn)
 
-            # SLOWER IN PYTHON 2
-            for ev in Events.values():
+            # SLOWER IN PYTHON 2.7
+            for hits_ev in hits_f.values():
                 if processed_events == self.NEVENTS: break
 
                 # Hits is a dict mapping hit ind to a np.array of ionized e-
-                Hits = generate_ionization_electrons(ev, self.hpxe)
+                electrons_ev = generate_ionization_electrons(hits_ev, self.hpxe)
 
-                # SLOWER IN PYTHON 2
-                for i, h in Hits.items():
+                # SLOWER IN PYTHON 2.7
+                for i, electrons_h in electrons_ev.items():
 
-                    # Call diffuse_electrons
-                    E = diffuse_electrons(h, self.hpxe)
+                    # Diffuse a hit's electrons
+                    electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = MiniTrackingPlaneBox(ev[i], self.tpbox, shape=self.w_dim)
+                    tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
 
                     # Determine where elecetrons will produce photons in EL
-                    F, IB = bin_EL(E, self.hpxe, tprb)
+                    F, IB = bin_EL(electrons_h, self.hpxe, tprb)
 
                     # Get TrackingPlaneResponseBox response
-                    for e, e_f, e_ib   in zip(E, F, IB): # electrons
+                    for e, e_f, e_ib   in zip(electrons_h, F, IB): # electrons
                         for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
                             if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
 
