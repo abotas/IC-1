@@ -80,7 +80,7 @@ def gather_montecarlo_hits(filepath):
     """
     f      = tb.open_file(filepath, 'r')
     ptab   = f.root.MC.MCTracks
-    file_hits = {}
+    hits_f = {}
     ev     = ptab[0]['event_indx']
     s_row  = 0
 
@@ -92,17 +92,17 @@ def gather_montecarlo_hits(filepath):
             # Bad karma? A trick to record the last event in the file
             if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
             else:                          f_row = row.nrow
-            ev_hits = np.empty((f_row - s_row, 4), dtype=np.float32)
-            ev_hits[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
-            ev_hits[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
-            file_hits[ev]  = ev_hits
+            hits_ev = np.empty((f_row - s_row, 4), dtype=np.float32)
+            hits_ev[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
+            hits_ev[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
+            hits_f[ev]     = hits_ev
             ev    = row['event_indx']
             s_row = row.nrow
 
     f.close()
-    return file_hits
+    return hits_f
 
-def generate_ionization_electrons(hits, hpxe):
+def generate_ionization_electrons(hits_ev, hpxe):
     """
     -Get the hits (a pandas DF contianing all the hits for an event)
     -generate ionization electrons for each hit
@@ -112,16 +112,16 @@ def generate_ionization_electrons(hits, hpxe):
 
     Should this be a method hin HPXeEL?
     """
-    H = {}
-    for i, h in enumerate(hits):
+    electrons_ev = {}
+    for i, h in enumerate(hits_ev):
         n_ie  = hpxe.ionization_electrons(h[3])
         n_ie += np.random.normal(scale=np.sqrt(n_ie * hpxe.ie_fano))
-        E     = np.empty((int(round(n_ie)), 3), dtype=np.float32)
-        E[:]  = h[:3]
-        H[i]  = E
-    return H
+        electrons_h     = np.empty((int(round(n_ie)), 3), dtype=np.float32)
+        electrons_h[:]  = h[:3]
+        electrons_ev[i]  = electrons_h
+    return electrons_ev
 
-def diffuse_electrons(E, hpxe):
+def diffuse_electrons(electrons, hpxe):
     """
     Adds gausian noise to drifting electron position
     mu=0, sig=mm/sqrt(drifting distance in m)
@@ -132,18 +132,18 @@ def diffuse_electrons(E, hpxe):
     should this be a method in HPXeEL?
     """
     # Avoid modifying in place?
-    E = np.copy(E)
+    electrons = np.copy(electrons)
 
     # sqrt dist from EL grid
-    sd = np.sqrt(E[:, 2] / units.mm * units.m)
+    sd = np.sqrt(electrons[:, 2] / units.mm * units.m)
 
     # mu=0, sig=lat_diff * sqrt(m)
     latr_drift= np.random.normal(scale=hpxe.diff_xy * np.array([sd, sd]).T)
-    long_drift= np.random.normal(scale=hpxe.diff_z  * sd, size=(len(E),))
-    E[:, :2] += latr_drift
-    E[:,  2] += long_drift
-    E[:,  2] /= hpxe.dV
-    return E # mod in place?
+    long_drift= np.random.normal(scale=hpxe.diff_z  * sd, size=(len(electrons),))
+    electrons[:, :2] += latr_drift
+    electrons[:,  2] += long_drift
+    electrons[:,  2] /= hpxe.dV
+    return electrons # mod in place?
 
 def SiPM_response(rb, e, z_bound, gain):
     """
@@ -165,10 +165,10 @@ def SiPM_response(rb, e, z_bound, gain):
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)),
            dtype=np.float32)
 
-def bin_EL(E, hpxe, rb):
+def bin_EL(electrons, hpxe, rb):
     """
     arguments:
-    E   , a np.array of all the diffused electrons from a single hit
+    electrons, a np.array of all the diffused electrons from a single hit
     rb, a TrackingPlaneResponseBox
     hpxe, a HPXeEL
 
@@ -179,13 +179,14 @@ def bin_EL(E, hpxe, rb):
      cast for each electron for in each time bin)
     """
     # Fraction of Gain and Integration Boundaries for each e for each z in z_pos
-    FG  = np.zeros((len(E), len(rb.z_pos)),     dtype=np.float32)
-    IB  = np.zeros((len(E), len(rb.z_pos) , 2), dtype=np.float32) + hpxe.d + hpxe.t
+    n_e = len(electrons)
+    FG  = np.zeros((n_e, len(rb.z_pos)),     dtype=np.float32)
+    IB  = np.zeros((n_e, len(rb.z_pos) , 2), dtype=np.float32) + hpxe.d + hpxe.t
     # z in units of time bin
-    TS  = (E[:, 2] - rb.z_pos[0]) / rb.z_pitch
+    TS  = (electrons[:, 2] - rb.z_pos[0]) / rb.z_pitch
     fTS = np.array(np.floor(TS), dtype=np.int16) # int16 if zdim > 127!
 
-    for i, (e, f, ts) in enumerate(zip(E, fTS, TS)):
+    for i, (e, f, ts) in enumerate(zip(electrons, fTS, TS)):
         for j, z in enumerate(rb.z_pos):
 
             # electron enters EL between z and z + z_pitch
