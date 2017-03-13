@@ -156,8 +156,8 @@ def SiPM_response(rb, e, z_bound, gain):
     # Calculate the xy distances only once
     dx2 = (rb.x_pos - e[0])**2
     dy2 = (rb.y_pos - e[1])**2
-    DX2 = np.array([dx2 for i in range(rb.x_dim)], dtype=np.float32).T
-    DY2 = np.array([dy2 for i in range(rb.y_dim)], dtype=np.float32)
+    DX2 = np.array([dx2 for i in range(rb.shape[0])], dtype=np.float32).T
+    DY2 = np.array([dy2 for i in range(rb.shape[1])], dtype=np.float32)
 
     return np.array(
            gain / (4.0 * (z_bound[0] -  z_bound[1])) \

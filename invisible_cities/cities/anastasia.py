@@ -29,19 +29,15 @@ class Anastasia(DetectorResponseCity):
     """
     The city of ANASTASIA
     """
-    def __init__(self,
-                 run_number = 0,
-                 files_in   = None,
-                 file_out   = None,
+    def __init__(self, files_in, file_out,
                  nprint     = 10000,
-                 hpxe       = HPXeEL()
-                 tpbox      = TrackingPlaneBox()
+                 hpxe       = HPXeEL(),
+                 tpbox      = TrackingPlaneBox(),
+                 run_number = 0, #TODO what do we do about run_number? and nprint..
                  # Parameters added at this level
 
                  NEVENTS = 0,
-                 wx_dim  = 8,
-                 wy_dim  = 8,
-                 wz_dim  = 4):
+                 w_dim   = (8, 8, 4)):
 
         DetectorResponseCity.__init__(self,
                                       run_number = run_number,
@@ -51,9 +47,7 @@ class Anastasia(DetectorResponseCity):
                                       tpbox      = tpbox,
                                       hpxe       = hpxe)
         self.NEVENTS = NEVENTS
-        self.wx_dim  = wx_dim
-        self.wy_dim  = wy_dim
-        self.wz_dim  = wz_dim
+        self.w_dim   = w_dim
 
     def run(self):
         """genereate the SiPM maps for each event"""
@@ -61,9 +55,7 @@ class Anastasia(DetectorResponseCity):
         SiPM_resp = f_out.create_earray(f_out.root,
                     atom  = tb.Float32Atom(),
                     name  = 'SiPM_resp',
-                    shape = (0, self.tpbox.x_dim,
-                                self.tpbox.y_dim,
-                                self.tpbox.z_dim),
+                    shape = (0, *self.tpbox.shape),
                     expectedrows = self.NEVENTS,
                     filters = tbl.filters(self.compression))
 
@@ -89,10 +81,7 @@ class Anastasia(DetectorResponseCity):
                     E = diffuse_electrons(h, self.hpxe)
 
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = MiniTrackingPlaneBox(ev[i], self.tpbox,
-                                                x_dim = self.wx_dim,
-                                                y_dim = self.wy_dim,
-                                                z_dim = self.wz_dim)
+                    tprb = MiniTrackingPlaneBox(ev[i], self.tpbox, shape=self.w_dim)
 
                     # Determine where elecetrons will produce photons in EL
                     F, IB = bin_EL(E, self.hpxe, tprb)
@@ -120,35 +109,30 @@ class Anastasia(DetectorResponseCity):
 def ANASTASIA(argv=sys.argv):
 
     conf = configure(argv)
-
-    A = Anastasia(hpxe = HPXeEL(
-                         dV      = conf['dV']   * units.mm/units.mus,
-                         d       = conf['d']    * units.mm,
-                         t       = conf['t']    * units.mm,
-                         t_el    = conf['t_el'] * units.mus,
-                         Wi      = conf['Wi']   * units.eV,
-                         rf      = conf['rf']     ,
-                         ie_fano = conf['ie_fano'],
-                         g_fano  = conf['g_fano'] ,
-                         diff_xy = conf['diff_xy'] * units.mm/np.sqrt(units.m) ,
-                         diff_z  = conf['diff_z']  * units.mm/np.sqrt(units.m)),
+    A = Anastasia(glob(conf['FILE_IN']), file_out = conf['FILE_OUT'],
+        hpxe = HPXeEL(dV      = conf['dV']     * units.mm/units.mus,
+                      d       = conf['d']      * units.mm,
+                      t       = conf['t']      * units.mm,
+                      t_el    = conf['t_el']   * units.mus,
+                      Wi      = conf['Wi']     * units.eV,
+                      rf      = conf['rf']     ,
+                      ie_fano = conf['ie_fano'],
+                      g_fano  = conf['g_fano'] ,
+                      diff_xy = conf['diff_xy'] * units.mm/np.sqrt(units.m) ,
+                      diff_z  = conf['diff_z']  * units.mm/np.sqrt(units.m)),
         tpbox = TrackingPlaneBox(
-                         x_min   = conf['x_min']   * units.mm  ,
-                         x_max   = conf['x_max']   * units.mm  ,
-                         y_min   = conf['y_min']   * units.mm  ,
-                         y_max   = conf['y_max']   * units.mm  ,
-                         z_min   = conf['z_min']   * units.mus ,
-                         z_max   = conf['z_max']   * units.mus ,
-                         x_pitch = conf['x_pitch'] * units.mm  ,
-                         y_pitch = conf['y_pitch'] * units.mm  ,
-                         z_pitch = conf['z_pitch'] * units.mus),
+                      x_min   = conf['x_min']   * units.mm  ,
+                      x_max   = conf['x_max']   * units.mm  ,
+                      y_min   = conf['y_min']   * units.mm  ,
+                      y_max   = conf['y_max']   * units.mm  ,
+                      z_min   = conf['z_min']   * units.mus ,
+                      z_max   = conf['z_max']   * units.mus ,
+                      x_pitch = conf['x_pitch'] * units.mm  ,
+                      y_pitch = conf['y_pitch'] * units.mm  ,
+                      z_pitch = conf['z_pitch'] * units.mus),
 
-        files_in = glob(conf['FILE_IN']),
-        NEVENTS  = conf['NEVENTS'],
-        file_out = conf['FILE_OUT'],
-        wx_dim   = conf['wx_dim'],
-        wy_dim   = conf['wy_dim'],
-        wz_dim   = conf['wz_dim'])
+        NEVENTS  =  conf['NEVENTS'],
+        w_dim    = (conf['wx_dim'], conf['wy_dim'], conf['wz_dim']))
 
     t0 = time(); A.run(); t1 = time();
     dt = t1 - t0

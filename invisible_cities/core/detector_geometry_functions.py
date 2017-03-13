@@ -36,7 +36,7 @@ class Box:
                              self.length_z()])
     def volume(self):
         return  self.length_x() * self.length_y() * self.length_z()
-        
+
 class TrackingPlaneBox(Box):
     """
     Defines a Tracking Plane Box (z will actually be time).
@@ -78,16 +78,14 @@ class TrackingPlaneBox(Box):
                                 (self.z_max - self.z_min) / self.z_pitch + 1,
                                  dtype=np.float32)
 
-        self.P = (self.x_pos, self.y_pos, self.z_pos)
-        self.x_dim = len(self.x_pos)
-        self.y_dim = len(self.y_pos)
-        self.z_dim = len(self.z_pos)
+        self.P     =     (self.x_pos,      self.y_pos,      self.z_pos)
+        self.shape = (len(self.x_pos), len(self.y_pos), len(self.z_pos))
 
-        self.resp = np.zeros((self.x_dim, self.y_dim, self.z_dim),
+        self.resp = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
     def clear_response(self):
-        self.resp = np.zeros((self.x_dim, self.y_dim, self.z_dim),
+        self.resp = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
     def in_sipm_plane(self, x, y):
@@ -141,9 +139,7 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
     full-size tpbox with self.situate()
     """
     def __init__(self, hit_coords, tpbox,
-                       x_dim    =    8,
-                       y_dim    =    8,
-                       z_dim    =    2,
+                       shape    = (8, 8, 4),
                        x_absmin = -235 * units.mm,
                        y_absmin = -235 * units.mm,
                        z_absmin =    0 * units.mus,
@@ -161,11 +157,11 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
 
         # Compute borders
         self.rx_center, self.x_min, self.x_max = find_response_borders(
-            hit_coords[0], tpbox.x_pitch, x_dim, self.x_absmin, self.x_absmax)
+            hit_coords[0], tpbox.x_pitch, shape[0], self.x_absmin, self.x_absmax)
         self.ry_center, self.y_min, self.y_max = find_response_borders(
-            hit_coords[1], tpbox.y_pitch, y_dim, self.y_absmin, self.y_absmax)
+            hit_coords[1], tpbox.y_pitch, shape[1], self.y_absmin, self.y_absmax)
         self.rz_center, self.z_min, self.z_max = find_response_borders(
-            hit_coords[2], tpbox.z_pitch, z_dim, self.z_absmin, self.z_absmax)
+            hit_coords[2], tpbox.z_pitch, shape[2], self.z_absmin, self.z_absmax)
 
         TrackingPlaneBox.__init__(self,
                                   x_min   = self.x_min,
@@ -178,10 +174,10 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
                                   y_pitch = tpbox.y_pitch,
                                   z_pitch = tpbox.z_pitch)
 
-        if x_dim * self.x_pitch + x_absmin > x_absmax: raise ValueError('xdim too large')
-        if y_dim * self.y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
-        if z_dim * self.z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
-        #Note: x_dim, y_dim, z_dim are saved in TrackingPLaneBox TODO better karma
+        if shape[0] * self.x_pitch + x_absmin > x_absmax: raise ValueError('xdim too large')
+        if shape[1] * self.y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
+        if shape[2] * self.z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
+        # note shape saved in TrackingPlaneBox (bad karma?)
 
     def situate(self, tpbox):
         """
@@ -208,9 +204,9 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
         if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')
 
         # compute max indices --non inclusive--
-        ix_f = ix_s + self.x_dim
-        iy_f = iy_s + self.y_dim
-        iz_f = iz_s + self.z_dim
+        ix_f = ix_s + self.shape[0]
+        iy_f = iy_s + self.shape[1]
+        iz_f = iz_s + self.shape[2]
 
         inds = np.array([ix_s, ix_f, iy_s, iy_f, iz_s, iz_f], dtype=np.float32)
         inds = np.array(np.round(inds), dtype=np.int32)
