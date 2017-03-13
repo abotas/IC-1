@@ -29,13 +29,15 @@ class Anastasia(DetectorResponseCity):
     """
     The city of ANASTASIA
     """
-    def __init__(self, hpxe, tpbox,
+    def __init__(self,
                  run_number = 0,
                  files_in   = None,
                  file_out   = None,
                  nprint     = 10000,
-
+                 hpxe       = HPXeEL()
+                 tpbox      = TrackingPlaneBox()
                  # Parameters added at this level
+
                  NEVENTS = 0,
                  wx_dim  = 8,
                  wy_dim  = 8,
@@ -119,7 +121,8 @@ def ANASTASIA(argv=sys.argv):
 
     conf = configure(argv)
 
-    A = Anastasia(HPXeEL(dV      = conf['dV']   * units.mm/units.mus,
+    A = Anastasia(hpxe = HPXeEL(
+                         dV      = conf['dV']   * units.mm/units.mus,
                          d       = conf['d']    * units.mm,
                          t       = conf['t']    * units.mm,
                          t_el    = conf['t_el'] * units.mus,
@@ -129,7 +132,8 @@ def ANASTASIA(argv=sys.argv):
                          g_fano  = conf['g_fano'] ,
                          diff_xy = conf['diff_xy'] * units.mm/np.sqrt(units.m) ,
                          diff_z  = conf['diff_z']  * units.mm/np.sqrt(units.m)),
-        TrackingPlaneBox(x_min   = conf['x_min']   * units.mm  ,
+        tpbox = TrackingPlaneBox(
+                         x_min   = conf['x_min']   * units.mm  ,
                          x_max   = conf['x_max']   * units.mm  ,
                          y_min   = conf['y_min']   * units.mm  ,
                          y_max   = conf['y_max']   * units.mm  ,

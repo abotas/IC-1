@@ -36,7 +36,7 @@ class Box:
                              self.length_z()])
     def volume(self):
         return  self.length_x() * self.length_y() * self.length_z()
-
+        
 class TrackingPlaneBox(Box):
     """
     Defines a Tracking Plane Box (z will actually be time).
@@ -187,6 +187,9 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
         """
         situate returns the indices indicating where in the larger
         TrackingPlaneBox (tpbox), TrackingPlaneResponseBox (self) is
+
+        should situate not just 'situate' but integrate self.resp into
+        tpb.resp?
         """
         if (self.x_pitch != tpbox.x_pitch or
             self.y_pitch != tpbox.y_pitch or
