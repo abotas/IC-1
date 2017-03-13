@@ -39,8 +39,11 @@ class Box:
 
 class TrackingPlaneBox(Box):
     """
-    Defines a Tracking Plane Box (z will actually be time).
+    Defines a Tracking Plane Box. Note in a TrackingPlaneBox
+    the z dimension is in units of time.
 
+    Additionally, a TrackingPlaneBox contains SiPMs at regular pitches
+    in x, y,and z.
     """
 
     def __init__(self, x_min = -235 * units.mm,
@@ -95,11 +98,21 @@ class TrackingPlaneBox(Box):
 
 def find_response_borders(center, pitch, dim, absmin, absmax):
     """
-    Helps initialize TrackingPlaneResponseBox, by finding the borders of the
-    responsive SiPM box.
+    find_response_borders helps initialize MiniTrackingPlaneBox, by
+    finding the borders of MiniTrackingPlaneBox around a center, one dimension
+    at a time.
 
-    May need to optimize because find_response_borders is run 3 times / hit
+    args
+    center: an x,y, or z, coordinate around which to build the MiniTPB
+    pitch : the pitch of the MiniTPB
+    dim   : the number of SiPMs along this dimension of the MiniTPB
+    absmin: the absolute minimum position of an SiPM along this dim in the tpbox
+    absmax: the absolute maximum position of an SiPM along this dim in the tpbox
 
+    returns
+    r_center: the position of a/the SiPM closest to center in this dim
+    d_min: the minimum border of the MiniTPB in this dim
+    d_max: the maximum border of the MiniTPB in this dim
     """
     if   dim <= 0: raise ValueError('dimension size must be greater than 0')
 

@@ -83,7 +83,7 @@ class Anastasia(DetectorResponseCity):
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
                     tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
 
-                    # Determine where elecetrons will produce photons in EL
+                    # Determine where electrons will produce photons in EL
                     F, IB = bin_EL(electrons_h, self.hpxe, tprb)
 
                     # Get TrackingPlaneResponseBox response
