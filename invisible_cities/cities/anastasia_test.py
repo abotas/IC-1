@@ -9,7 +9,8 @@ from invisible_cities.core.detector_response_functions import \
      gather_montecarlo_hits, \
      generate_ionization_electrons, \
      diffuse_electrons, \
-     bin_EL, \
+     distribute_gain, \
+     compute_photon_emmission_boundaries, \
      SiPM_response, \
      HPXeEL
 
@@ -270,61 +271,61 @@ def test_mini_tracking_plane_box_situate():
         assert (rb.y_pos == tpb.y_pos[inds[2]: inds[3]]).all()
         assert (rb.z_pos == tpb.z_pos[inds[4]: inds[5]]).all()
 
-def test_bin_EL_gain_3mus():
+def test_distribute_gain_3mus():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox([0,0,5.5*units.mus], tpbox, shape=(5,5,5))
-    F, IB = bin_EL(E, EL, b0)
+    FG  = distribute_gain(E, EL, b0)
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
-    assert np.allclose(F[0, 0], 0)
-    assert np.allclose(F[0, 1], gf1 * EL.Ng / EL.rf)
-    assert np.allclose(F[0, 2], gf2 * EL.Ng / EL.rf)
-    assert np.allclose(F[0, 3], gf3 * EL.Ng / EL.rf)
-    assert np.allclose(F[0, 4], 0)
+    assert np.allclose(FG[0, 0], 0)
+    assert np.allclose(FG[0, 1], gf1)
+    assert np.allclose(FG[0, 2], gf2)
+    assert np.allclose(FG[0, 3], gf3)
+    assert np.allclose(FG[0, 4], 0)
 
-def test_bin_EL_gain_2mus():
+def test_distribute_gain_2mus():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=2*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox([0, 0, 5.5*units.mus], tpbox, shape=(5,5,5))
-    F, IB = bin_EL(E, EL, b0)
+    FG  = distribute_gain(E, EL, b0)
     gf1 = min((b0.z_pos[1] + b0.z_pitch - z) / EL.t_el, 1)
     gf2 = 1-gf1
-    assert np.allclose(F[0, 0], 0)
-    assert np.allclose(F[0, 1], gf1 * EL.Ng / EL.rf)
-    assert np.allclose(F[0, 2], gf2 * EL.Ng / EL.rf)
-    assert np.allclose(F[0, 3], 0)
-    assert np.allclose(F[0, 4], 0)
+    assert np.allclose(FG[0, 0], 0)
+    assert np.allclose(FG[0, 1], gf1)
+    assert np.allclose(FG[0, 2], gf2)
+    assert np.allclose(FG[0, 3], 0)
+    assert np.allclose(FG[0, 4], 0)
 
-def test_bin_EL_gain_noELt():
+def test_distribute_gain_noELt():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=.01*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox([0, 0, 5.5*units.mus], tpbox, shape=(5,5,5))
-    F, IB = bin_EL(E, EL, b0)
-    assert np.allclose(F[0, 0], 0)
-    assert np.allclose(F[0, 1], EL.Ng / EL.rf)
-    assert np.allclose(F[0, 2], 0)
-    assert np.allclose(F[0, 3], 0)
-    assert np.allclose(F[0, 4], 0)
+    FG  = distribute_gain(E, EL, b0)
+    assert np.allclose(FG[0, 0], 0)
+    assert np.allclose(FG[0, 1], 1)
+    assert np.allclose(FG[0, 2], 0)
+    assert np.allclose(FG[0, 3], 0)
+    assert np.allclose(FG[0, 4], 0)
 
 def test_bin_EL_integration_boundaries():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
     tpbox = TrackingPlaneBox()
-
     b0  = MiniTrackingPlaneBox([0, 0,  5.5 * units.mus], tpbox, shape=(5,5,5))
-    F, IB = bin_EL(E, EL, b0)
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
+    FG  = np.array([[0, gf1, gf2, gf3, 0]])
+    IB  = compute_photon_emmission_boundaries(FG, EL, b0)
     ib0 = np.array([EL.d + EL.t, EL.d + EL.t],    dtype=np.float32)
     ib1 = np.array([ib0[0], ib0[1] - gf1 * EL.d], dtype=np.float32)
     ib2 = np.array([ib1[1], ib1[1] - gf2 * EL.d], dtype=np.float32)

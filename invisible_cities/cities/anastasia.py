@@ -18,7 +18,8 @@ from invisible_cities.core.detector_response_functions import HPXeEL,  \
      gather_montecarlo_hits, \
      generate_ionization_electrons, \
      diffuse_electrons, \
-     bin_EL, \
+     distribute_gain, \
+     compute_photon_emmission_boundaries, \
      SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
      MiniTrackingPlaneBox
@@ -83,11 +84,19 @@ class Anastasia(DetectorResponseCity):
                     # Find TrackingPlaneResponseBox within TrackingPlaneBox
                     tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
 
-                    # Determine where electrons will produce photons in EL
-                    F, IB = bin_EL(electrons_h, self.hpxe, tprb)
+                    # Determine fraction of gain from each electron that will
+                    # be recieved by each time bin as e- crossing EL
+                    FG = distribute_gain(electrons_h, self.hpxe, tprb)
+
+                    # Compute
+                    IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb)
+
+                    photons  = FG * self.hpxe.Ng / self.hpxe.rf
+                    photons += np.random.normal(
+                        scale=np.sqrt(photons * self.hpxe.g_fano))
 
                     # Get TrackingPlaneResponseBox response
-                    for e, e_f, e_ib   in zip(electrons_h, F, IB): # electrons
+                    for e, e_f, e_ib   in zip(electrons_h, photons, IB): # electrons
                         for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
                             if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
 

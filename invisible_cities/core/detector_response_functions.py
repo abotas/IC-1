@@ -211,6 +211,50 @@ def SiPM_response(rb, e, z_bound, gain):
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)),
            dtype=np.float32)
 
+def distribute_gain(electrons, hpxe, rb):
+    """
+    distribute_gain computes the fraction of the gain produced by each electron,
+    that is received by each time bin in rb.
+    """
+    FG  = np.zeros((len(electrons), len(rb.z_pos)), dtype=np.float32)
+
+    # electron z-coordinates in units of time bin
+    TS  = (electrons[:, 2] - rb.z_pos[0]) / rb.z_pitch
+    fTS = np.array(np.floor(TS), dtype=np.int16)
+
+    for i, (e, f, ts) in enumerate(zip(electrons, fTS, TS)):
+        for j, z in enumerate(rb.z_pos):
+            # electron enters EL (between time=z and time=z + z_pitch)
+            if j == f:
+                # Calculate gain in first responsive slice
+                FG[i, j] = min((j + 1 - ts) * rb.z_pitch / hpxe.t_el, 1)
+            # electron is still crossing EL
+            elif j > f and z < e[2] + hpxe.t_el and f > 0:
+                # electron crossing EL over entire time bin
+                if z + rb.z_pitch  <= e[2] + hpxe.t_el:
+                    FG[i, j] = rb.z_pitch / hpxe.t_el
+                # electron finishes crossing EL during time bin
+                else: FG[i, j] = (e[2] + hpxe.t_el - z) / hpxe.t_el
+    return FG
+
+def compute_photon_emmission_boundaries(FG, hpxe, rb):
+    """
+    photon_emmission_boundaries calculates the
+    """
+    IB = np.zeros((len(FG), len(rb.z_pos), 2), dtype=np.float32) + (hpxe.d + hpxe.t)
+
+    IB[:, 0, 1] -= FG[:, 0] * hpxe.d
+    for i in range(1, len(rb.z_pos)):
+        IB[:, i, 0] = IB[:, i - 1, 1]
+        IB[:, i, 1] = IB[:, i, 0] - FG[:, i] * hpxe.d
+
+    # Some electrons may have started traversing EL before the rb.zpos[0]
+    # Then they've already traveled the distance below before rb.zpos[0]
+    IB -= (IB[:, -1, -1] - hpxe.t)[:, None, None]
+    return IB
+
+
+
 def bin_EL(electrons, hpxe, rb): # TODO make this simpler
     """
     bin_EL allows Anastasia to simulate the effect of the EL
