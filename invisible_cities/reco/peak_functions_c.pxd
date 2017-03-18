@@ -18,8 +18,9 @@ thr_MAU: treshold above MAU to select sample
 """
 cpdef calibrated_pmt_sum(double [:, :] CWF,
                          double [:] adc_to_pes,
-                         int n_MAU=*,
-                         double thr_MAU=*)
+                         list       pmt_active = *,
+                         int        n_MAU      = *,
+                         double thr_MAU        = *)
 
 
 """
