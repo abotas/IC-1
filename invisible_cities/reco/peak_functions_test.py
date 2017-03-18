@@ -57,22 +57,30 @@ def csum_zs_blr_cwf(electron_RWF_file):
         csum_cwf_pmt6, _ = cpf.calibrated_pmt_sum(
                                CWF,
                                adc_to_pes,
-                               list(range(6)),
+                               pmt_active = list(range(6)),
                                n_MAU = 100,
                                thr_MAU =   3)
 
         csum_blr_pmt6, _ = cpf.calibrated_pmt_sum(
                                pmtblr[event].astype(np.float64),
                                adc_to_pes,
-                               list(range(6)),
+                               pmt_active = list(range(6)),
                                n_MAU = 100,
                                thr_MAU =   3)
 
         csum_blr_py_pmt6, _, _ = pf.calibrated_pmt_sum(
                                     pmtblr[event].astype(np.float64),
-                                    list(range(6)),
                                     adc_to_pes,
+                                    pmt_active = list(range(6)),
                                     n_MAU=100, thr_MAU=3)
+
+        CAL_PMT, CAL_PMT_MAU  =  cpf.calibrated_pmt_mau(
+                                     CWF,
+                                     adc_to_pes,
+                                     pmt_active = list(range(12)),
+                                     n_MAU = 100,
+                                     thr_MAU =   3)
+
 
         wfzs_ene,    wfzs_indx    = cpf.wfzs(csum_blr,    threshold=0.5)
         wfzs_ene_py, wfzs_indx_py =  pf.wfzs(csum_blr_py, threshold=0.5)
@@ -82,6 +90,7 @@ def csum_zs_blr_cwf(electron_RWF_file):
         return (namedtuple('Csum',
                         """csum_cwf csum_blr csum_blr_py
                            csum_cwf_pmt6 csum_blr_pmt6 csum_blr_py_pmt6
+                           CAL_PMT, CAL_PMT_MAU,
                            wfzs_ene wfzs_ene_py
                            wfzs_indx wfzs_indx_py""")
         (csum_cwf          = csum_cwf,
@@ -89,12 +98,22 @@ def csum_zs_blr_cwf(electron_RWF_file):
          csum_blr_py       = csum_blr_py,
          csum_cwf_pmt6     = csum_cwf_pmt6,
          csum_blr_pmt6     = csum_blr_pmt6,
+         CAL_PMT           = CAL_PMT,
+         CAL_PMT_MAU       = CAL_PMT_MAU,
          csum_blr_py_pmt6  = csum_blr_py_pmt6,
          wfzs_ene          = wfzs_ene,
          wfzs_ene_py       = wfzs_ene_py,
          wfzs_indx         = wfzs_indx,
          wfzs_indx_py      = wfzs_indx_py))
 
+def test_csum_cwf_close_to_csum_of_calibrated_pmts(csum_zs_blr_cwf):
+    p = csum_zs_blr_cwf
+
+    csum = 0
+    for pmt in p.CAL_PMT:
+        csum += np.sum(pmt)
+
+    assert np.isclose(np.sum(p.csum_cwf), np.sum(csum), rtol=0.0001)
 
 def test_csum_cwf_close_to_csum_blr(csum_zs_blr_cwf):
     p = csum_zs_blr_cwf
@@ -116,7 +135,7 @@ def test_csum_blr_close_to_csum_blr_py(csum_zs_blr_cwf):
 def test_csum_blr_pmt_close_to_csum_blr_py_pmt(csum_zs_blr_cwf):
     p = csum_zs_blr_cwf
     assert np.isclose(np.sum(p.csum_blr_pmt6), np.sum(p.csum_blr_py_pmt6),
-                      rtol=1e-4)
+                      rtol=1e-3)
 
 def test_wfzs_ene_close_to_wfzs_ene_py(csum_zs_blr_cwf):
     p = csum_zs_blr_cwf
@@ -138,6 +157,12 @@ def pmaps_electrons(electron_RWF_file):
                       lmax   =  20,
                       stride =   4,
                       rebin  = False)
+    # s1par_PMT = S12P( tmin   =  99*units.mus,
+    #                   tmax   =  101*units.mus,
+    #                   lmin   =    3,
+    #                   lmax   =   20,
+    #                   stride =    4,
+    #                   rebin  = False)
 
     s2par = S12Params(tmin   =    101 * units.mus,
                       tmax   =   1199 * units.mus,

@@ -129,7 +129,8 @@ def rebin_waveform(t, e, stride=40):
     contents expresses energy (e.g, in pes)
     The function returns the rebinned T and E vectors
 
-    NB: This function is used mainly for testing purposed. It is programmed "c-style", which is not necesarily optimal
+    NB: This function is used mainly for testing purposed. It is
+     programmed "c-style", which is not necesarily optimal
     in python, but follows the same logic that the corresponding cython
     function (in peak_functions_c), which runs faster and should be used
     instead of this one for nornal calculations.
@@ -223,7 +224,8 @@ def find_S12_py(wfzs, index,
     accept the peak only if within [tmin, tmax)
     returns a dictionary of S12
 
-    NB: This function is used mainly for testing purposed. It is programmed "c-style", which is not necesarily optimal
+    NB: This function is used mainly for testing purposed. It is programmed
+     "c-style", which is not necesarily optimal
     in python, but follows the same logic that the corresponding cython
     function (in peak_functions_c), which runs faster and should be used
     instead of this one for nornal calculations.
@@ -315,25 +317,74 @@ def sipm_s2(dSIPM, S2, thr=5*units.pes):
             SIPML[dSIPM[i][0]] = e
     return SIPML
 
-# def sipm_s2(dSIPM, S2, thr=5*units.pes):
-#     """Given a vector with SIPMs (energies above threshold), return a list
-#     of np arrays. Each element of the list is the S2 window in the
-#     SiPM (if not zero).
-#     """
-#     #import pdb; pdb.set_trace()
+# def compute_csum_and_pmaps(pmtrwf, sipmrwf, pmt_active,
+#                            coeff_c, coeff_blr, adc_to_pes,
+#                            adc_to_pes_sipm,
+#                            s1_params, s2_params, s1par_PMT,
+#                            thresholds, thresholds_PMT,
+#                            event, run_number=0):
+#     """Compute calibrated sum and PMAPS.
 #
-#     i0, i1 = index_from_s2(S2)
-#     dim = (i1 - i0)
-#     SIPML = []
-#     for i in dSIPM.keys():
-#         sipm = dSIPM[i][1]
-#         psum = np.sum(sipm[i0:i1])
-#         if psum > thr:
-#             e = np.zeros(dim, dtype=np.double)
-#             e[:] = sipm[i0:i1]
-#             SIPML.append([dSIPM[i][0], e])
-#     return SIPML
-
+#     :param pmtrwf: PMTs RWF
+#     :param sipmrwf: SiPMs RWF
+#     :param s1par: parameters for S1 search (S12Params namedtuple)
+#     :param s2par: parameters for S2 search (S12Params namedtuple)
+#     :param thresholds: thresholds for searches (ThresholdParams namedtuple)
+#     :param event: event number
+#
+#     :returns: a nametuple of calibrated sum and a namedtuple of PMAPS
+#     """
+#
+#     thr = thresholds
+#     thr2 = thresholds_PMT
+#
+#     # data base
+#     #DataPMT = load_db.DataPMT(run_number)
+#     #adc_to_pes = abs(DataPMT.adc_to_pes.values)
+#     #coeff_c    = abs(DataPMT.coeff_c   .values)
+#     #coeff_blr  = abs(DataPMT.coeff_blr .values)
+#     DataSiPM   = load_db.DataSiPM()
+#     adc_to_pes_sipm = DataSiPM.adc_to_pes.values
+#
+#     # deconv
+#     CWF = blr.deconv_pmt(pmtrwf[event], coeff_c, coeff_blr)
+#
+#     # calibrated sum
+#     csum, csum_mau = calibrated_pmt_sum(CWF, adc_to_pes, pmt_active,
+#                                         n_MAU=100, thr_MAU=thr.thr_MAU)
+#
+#     # calibrated PMT waveforms (above MAU)
+#     CPMT           = calibrated_pmt_mau(CWF, adc_to_pes, pmt_active,
+#                                         n_MAU=100, thr_MAU=0.)
+#
+#     # S2
+#     s2_ene, s2_indx = cpf.wfzs(csum, threshold=thr.thr_s2)
+#     S2 =  cpf.find_S12(s2_ene, s2_indx, **s2_params._asdict())
+#
+#     # S1 and S1p
+#     s1_ene, s1_indx = cpf.wfzs(csum_mau, threshold=thr.thr_s1)
+#     S1 =  cpf.find_S12(s1_ene, s1_indx, **s1_params._asdict())
+#     S1p = cpf.find_S12(s1_ene, s1_indx, **s1p_params._asdict())
+#
+#     # S1 and S1p for individual PMTs
+#     if len(S2) == 1:
+#         t = S2[0][0]
+#         tmin = t[-1] + 1*units.mus
+#         s1p    = S12P(tmin=tmin, tmax=1100*units.mus,
+#                       lmin=6, lmax=20, stride=4, rebin=False)
+#     PMT_S1 = {}
+#     PMT_S1p = {}
+#     for pmt in pmt_active:
+#         s1_ene, s1_indx = cpf.wfzs(CPMT[pmt], threshold=thr2.thr_s1)
+#         PMT_S1[pmt] = cpf.find_S12(s1_ene, s1_indx, **s1par_PMT._asdict())
+#         PMT_S1p[pmt] = cpf.find_S12(s1_ene, s1_indx, **s1par_PMT._asdict())
+#
+#     sipm = cpf.signal_sipm(sipmrwf[event], adc_to_pes_sipm, thr=thr.thr_sipm, n_MAU=100)
+#     SIPM = cpf.select_sipm(sipm)
+#     S2Si = pf.sipm_s2_dict(SIPM, S2, thr=thr.thr_SIPM)
+#     S2Si = 0
+#     return (Csum(csum=csum, csum_mau=csum_mau, cpmt=CPMT),
+#             Pmaps(S1=S1, S2=S2, S2Si=S2Si, S1p=S1p, PMT_S1=PMT_S1, PMT_S1p=PMT_S1p))
 
 def compute_csum_and_pmaps(pmtrwf, sipmrwf, s1par, s2par, thresholds, event):
     """Compute calibrated sum and PMAPS.

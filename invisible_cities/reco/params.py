@@ -17,4 +17,3 @@ for name, attrs in (
     _add_namedtuple_in_this_module(name, attrs)
 
 # Leave nothing but the namedtuple types in the namespace of this module
-del name, namedtuple, sys, this_module, _add_namedtuple_in_this_module
