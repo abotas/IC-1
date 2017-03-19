@@ -49,70 +49,75 @@ class Anastasia(DetectorResponseCity):
         self.NEVENTS = NEVENTS
         self.w_dim   = w_dim
 
+    # TODO: SHORTEN LINES
+    # TODO: ADD MORE COMMENTS
     def run(self):
         """generate the SiPM maps for each event"""
-        f_out     = tb.open_file(self.output_file, 'w')
-        SiPM_resp = f_out.create_earray(f_out.root,
-                    atom  = tb.Float32Atom(),
-                    name  = 'SiPM_resp',
-                    shape = (0, *self.tpbox.shape),
-                    expectedrows = self.NEVENTS,
-                    filters = tbl.filters(self.compression))
+        with tb.open_file(self.output_file, 'w') as f_out:
+            #f_out     = tb.open_file(self.output_file, 'w')
+            SiPM_resp = f_out.create_earray(f_out.root,
+                        atom  = tb.Float32Atom(),
+                        name  = 'SiPM_resp',
+                        shape = (0, *self.tpbox.shape),
+                        expectedrows = self.NEVENTS,
+                        filters = tbl.filters(self.compression))
 
-        processed_events = 0
-        # Loop over each desired file in filespath
-        for fn in self.input_files:
-            if processed_events == self.NEVENTS: break
-
-            # hits_f is a dictionary mapping event_indx to a np.array of hits
-            hits_f = gather_montecarlo_hits(fn)
-
-            # SLOWER IN PYTHON 2.7
-            for hits_ev in hits_f.values():
+            processed_events = 0
+            # Loop over each desired file in filespath
+            for fn in self.input_files:
                 if processed_events == self.NEVENTS: break
 
-                # Hits is a dict mapping hit ind to a np.array of ionized e-
-                electrons_ev = generate_ionization_electrons(hits_ev, self.hpxe)
+                # hits_f is a dictionary mapping event_indx to a np.array of hits
+                hits_f = gather_montecarlo_hits(fn)
 
                 # SLOWER IN PYTHON 2.7
-                for i, electrons_h in electrons_ev.items():
+                for hits_ev in hits_f.values():
+                    if processed_events == self.NEVENTS: break
 
-                    # Diffuse a hit's electrons
-                    electrons_h = diffuse_electrons(electrons_h, self.hpxe)
+                    # Hits is a dict mapping hit ind to a np.array of ionized e-
+                    electrons_ev = generate_ionization_electrons(hits_ev, self.hpxe)
 
-                    # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                    tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
+                    # SLOWER IN PYTHON 2.7
+                    for i, electrons_h in electrons_ev.items():
 
-                    # Determine fraction of gain from each electron that will
-                    # be recieved by each time bin as e- crossing EL
-                    FG = distribute_gain(electrons_h, self.hpxe, tprb)
+                        # Diffuse a hit's electrons
+                        electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
-                    # Compute
-                    IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb.shape[2])
+                        # Find TrackingPlaneResponseBox within TrackingPlaneBox
+                        tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
 
-                    photons  = FG * self.hpxe.Ng / self.hpxe.rf
-                    photons += np.random.normal(
-                        scale=np.sqrt(photons * self.hpxe.g_fano))
+                        # Determine fraction of gain from each electron that will
+                        # be recieved by each time bin as e- crossing EL
+                        FG = distribute_gain(electrons_h, self.hpxe, tprb)
 
-                    # Get TrackingPlaneResponseBox response
-                    for e, e_f, e_ib   in zip(electrons_h, photons, IB): # electrons
-                        for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
-                            if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
+                        # Compute
+                        IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb.shape[2])
 
-                    # Integrate response into larger tracking plane
-                    xs, xf, ys, yf, zs, zf = tprb.situate(self.tpbox)
-                    self.tpbox.resp[xs: xf, ys: yf, zs: zf] += tprb.resp
+                        photons  = FG * self.hpxe.Ng / self.hpxe.rf
+                        photons += np.random.normal(
+                            scale=np.sqrt(photons * self.hpxe.g_fano))
 
-                # Make a flag to turn this off?
-                self.tpbox.resp += np.random.poisson(self.tpbox.resp)
+                        # TODO: Make separate function
+                        # Get TrackingPlaneResponseBox response
+                        for e, e_f, e_ib   in zip(electrons_h, photons, IB): # electrons
+                            for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
+                                if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
 
-                # Write SiPM map to file
-                SiPM_resp.append([self.tpbox.resp])
+                        # TODO: Make one line
+                        # Integrate response into larger tracking plane
+                        xs, xf, ys, yf, zs, zf = tprb.situate(self.tpbox)
+                        self.tpbox.resp[xs: xf, ys: yf, zs: zf] += tprb.resp
 
-                processed_events += 1
+                    # TODO: Make separate function
+                    # Make a flag to turn this off?
+                    self.tpbox.resp += np.random.poisson(self.tpbox.resp)
 
-        print(f_out)
-        f_out.close()
+                    # Write SiPM map to file
+                    SiPM_resp.append([self.tpbox.resp])
+
+                    processed_events += 1
+
+            print(f_out)
 
 def ANASTASIA(argv=sys.argv):
 
