@@ -59,6 +59,7 @@ cpdef calibrated_pmt_sum(double [:, :]  CWF,
 
     return np.asarray(csum), np.asarray(csum_mau)
 
+
 cpdef calibrated_pmt_mau(double [:, :]  CWF,
                          double [:]     adc_to_pes,
                          list           pmt_active = [],
