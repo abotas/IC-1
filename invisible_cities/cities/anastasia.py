@@ -114,6 +114,8 @@ class Anastasia(DetectorResponseCity):
 
                     # Write SiPM map to file
                     SiPM_resp.append([self.tpbox.resp])
+                    self.tpbox.clear_response()
+                    # TODO FLUSH EAarray
 
                     processed_events += 1
 
