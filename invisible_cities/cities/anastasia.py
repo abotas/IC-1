@@ -32,11 +32,10 @@ class Anastasia(DetectorResponseCity):
     """
     def __init__(self, files_in, file_out,
                  nprint     = 10000,
-                 hpxe       = HPXeEL(),
-                 tpbox      = TrackingPlaneBox(),
+                 hpxe       = None,
+                 tpbox      = None,
                  run_number = 0, #TODO what do we do about run_number? and nprint..
                  # Parameters added at this level
-
                  NEVENTS = 0,
                  w_dim   = (8, 8, 4)):
 
@@ -51,7 +50,7 @@ class Anastasia(DetectorResponseCity):
         self.w_dim   = w_dim
 
     def run(self):
-        """genereate the SiPM maps for each event"""
+        """generate the SiPM maps for each event"""
         f_out     = tb.open_file(self.output_file, 'w')
         SiPM_resp = f_out.create_earray(f_out.root,
                     atom  = tb.Float32Atom(),
@@ -89,7 +88,7 @@ class Anastasia(DetectorResponseCity):
                     FG = distribute_gain(electrons_h, self.hpxe, tprb)
 
                     # Compute
-                    IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb)
+                    IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb.shape[2])
 
                     photons  = FG * self.hpxe.Ng / self.hpxe.rf
                     photons += np.random.normal(

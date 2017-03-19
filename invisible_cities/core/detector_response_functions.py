@@ -214,7 +214,9 @@ def SiPM_response(rb, e, z_bound, gain):
 def distribute_gain(electrons, hpxe, rb):
     """
     distribute_gain computes the fraction of the gain produced by each electron,
-    that is received by each time bin in rb.
+    that is received by each time bin of SiPMs in rb
+
+    args
     """
     FG  = np.zeros((len(electrons), len(rb.z_pos)), dtype=np.float32)
 
@@ -237,14 +239,16 @@ def distribute_gain(electrons, hpxe, rb):
                 else: FG[i, j] = (e[2] + hpxe.t_el - z) / hpxe.t_el
     return FG
 
-def compute_photon_emmission_boundaries(FG, hpxe, rb):
+def compute_photon_emmission_boundaries(FG, hpxe, z_dim):
     """
-    photon_emmission_boundaries calculates the
+    compute_photon_emmission_boundaries computes the z-distances from an
+    electron crossing the EL to the SiPMs from which the electron is producing
+    photons.
     """
-    IB = np.zeros((len(FG), len(rb.z_pos), 2), dtype=np.float32) + (hpxe.d + hpxe.t)
+    IB = np.zeros((len(FG), z_dim, 2), dtype=np.float32) + (hpxe.d + hpxe.t)
 
     IB[:, 0, 1] -= FG[:, 0] * hpxe.d
-    for i in range(1, len(rb.z_pos)):
+    for i in range(1, z_dim):
         IB[:, i, 0] = IB[:, i - 1, 1]
         IB[:, i, 1] = IB[:, i, 0] - FG[:, i] * hpxe.d
 
@@ -252,88 +256,3 @@ def compute_photon_emmission_boundaries(FG, hpxe, rb):
     # Then they've already traveled the distance below before rb.zpos[0]
     IB -= (IB[:, -1, -1] - hpxe.t)[:, None, None]
     return IB
-
-
-
-def bin_EL(electrons, hpxe, rb): # TODO make this simpler
-    """
-    bin_EL allows Anastasia to simulate the effect of the EL
-
-    The effect of the EL:
-    (If it takes 2mus for an e- to cross the EL and time bins are 1mus thick,
-     each time bin of the will only receive a fraction of the total gain
-     produced by a single e-)
-
-    bin_EL
-    1) determines what number of photons produced by each ionization electron
-    traveling through the EL is received by each time bin of SiPMs.
-
-    2) computes the z-distance boundaries to the SiPMs from which the
-    electron crossing the EL is producing photons.
-
-    bin_EL does both of these things beacause the fraction of the gain
-    produced by each time bin equals the fraction of the EL the electron has
-    crossed during each time bin.
-
-    I can probably split 1 and 2 into two functions by having 1 compute just the
-    fraction of the gain, not the total number of photons, and using the
-    fraction of the gain in each time bin to calculate the z-distance integration
-    boundaries
-
-    arguments:
-    electrons, a np.array of all the diffused electrons from a single hit
-    rb, a TrackingPlaneResponseBox
-    hpxe, a HPXeEL
-
-    returns:
-    the effect of the EL
-    -G  the photons produced by each electron in each z-time bin
-    -IB the integration boundaries (zdist from el from which photons are being
-     cast for each electron for in each time bin)
-    """
-    # Fraction of Gain and Integration Boundaries for each e for each z in z_pos
-    n_e = len(electrons)
-    FG  = np.zeros((n_e, len(rb.z_pos)),     dtype=np.float32)
-    IB  = np.zeros((n_e, len(rb.z_pos) , 2), dtype=np.float32) + hpxe.d + hpxe.t
-    # z in units of time bin
-    TS  = (electrons[:, 2] - rb.z_pos[0]) / rb.z_pitch
-    fTS = np.array(np.floor(TS), dtype=np.int16) # int16 if zdim > 127!
-
-    for i, (e, f, ts) in enumerate(zip(electrons, fTS, TS)):
-        for j, z in enumerate(rb.z_pos):
-
-            # electron enters EL between z and z + z_pitch
-            if j == f:
-                # Calculate gain in first responsive slice
-                fg = min((j + 1 - ts) * rb.z_pitch / hpxe.t_el, 1)
-
-                # Compute distance integration boundaries for time bin
-                s_d = hpxe.d + hpxe.t
-                ib  = [s_d, s_d - fg * hpxe.d]
-                FG[i, j] = fg
-                IB[i, j] = np.array(ib, dtype=np.float32)
-
-            # electron is still crossing EL
-            elif j > f and z < e[2] + hpxe.t_el and f > 0:
-                # electron crossing EL over entire time bin
-                if z + rb.z_pitch  <= e[2] + hpxe.t_el:
-                    fg = rb.z_pitch / hpxe.t_el
-                    s_d = hpxe.d + hpxe.t - (z - e[2]) / hpxe.t_el * hpxe.d
-                    ib  = [s_d, s_d - fg * hpxe.d]
-                    FG[i, j] = fg
-                    IB[i, j] = np.array(ib, dtype=np.float32)
-
-                # electron finishes crossing EL during time bin
-                else:
-                    fg  = (e[2] + hpxe.t_el - z) / hpxe.t_el
-                    s_d = hpxe.d + hpxe.t - (z - e[2]) / hpxe.t_el * hpxe.d
-                    ib  = [s_d, hpxe.t]
-                    FG[i, j] = fg
-                    IB[i, j] = np.array(ib, dtype=np.float32)
-                    #if not np.allclose(hpxe.t, s_d - fg * hpxe.t_el):
-                    #    raise ValueError('final integ boundary != hpxe.t')
-
-    F  = FG * hpxe.Ng / hpxe.rf
-    F += np.random.normal(scale=np.sqrt(F * hpxe.g_fano))
-
-    return F, IB

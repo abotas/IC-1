@@ -87,7 +87,6 @@ def config_file_spec_with_tmpdir(tmpdir):
                 t_el = 2,
                 t    = 5,
                 d    = 5)
-
 @mark.slow
 def test_command_line_anastasia(config_tmpdir):
     config_file_spec = config_file_spec_with_tmpdir(config_tmpdir)
@@ -325,7 +324,7 @@ def test_bin_EL_integration_boundaries():
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
     FG  = np.array([[0, gf1, gf2, gf3, 0]])
-    IB  = compute_photon_emmission_boundaries(FG, EL, b0)
+    IB  = compute_photon_emmission_boundaries(FG, EL, b0.shape[2])
     ib0 = np.array([EL.d + EL.t, EL.d + EL.t],    dtype=np.float32)
     ib1 = np.array([ib0[0], ib0[1] - gf1 * EL.d], dtype=np.float32)
     ib2 = np.array([ib1[1], ib1[1] - gf2 * EL.d], dtype=np.float32)
