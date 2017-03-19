@@ -48,6 +48,7 @@ class Anastasia(DetectorResponseCity):
                                       hpxe       = hpxe)
         self.NEVENTS = NEVENTS
         self.w_dim   = w_dim
+        self.hrb     = MiniTrackingPlaneBox(tpbox)
 
     # TODO: SHORTEN LINES
     # TODO: ADD MORE COMMENTS
@@ -84,15 +85,16 @@ class Anastasia(DetectorResponseCity):
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
                         # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                        tprb = MiniTrackingPlaneBox(hits_ev[i], self.tpbox, shape=self.w_dim)
+                        self.hrb.center(hits_ev[i], self.w_dim)
 
                         # Determine fraction of gain from each electron that will
                         # be recieved by each time bin as e- crossing EL
-                        FG = distribute_gain(electrons_h, self.hpxe, tprb)
+                        FG = distribute_gain(electrons_h, self.hpxe, self.hrb)
 
                         # Compute
-                        IB = compute_photon_emmission_boundaries(FG, self.hpxe, tprb.shape[2])
+                        IB = compute_photon_emmission_boundaries(FG, self.hpxe, self.hrb.shape[2])
 
+                        #TODO make separate function
                         photons  = FG * self.hpxe.Ng / self.hpxe.rf
                         photons += np.random.normal(
                             scale=np.sqrt(photons * self.hpxe.g_fano))
@@ -101,12 +103,12 @@ class Anastasia(DetectorResponseCity):
                         # Get TrackingPlaneResponseBox response
                         for e, e_f, e_ib   in zip(electrons_h, photons, IB): # electrons
                             for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
-                                if f > 0: tprb.resp[:,:, i] += SiPM_response(tprb, e, ib, f)
+                                if f > 0: self.hrb.resp[:,:, i] += SiPM_response(self.hrb, e, ib, f)
 
                         # TODO: Make one line
                         # Integrate response into larger tracking plane
-                        xs, xf, ys, yf, zs, zf = tprb.situate(self.tpbox)
-                        self.tpbox.resp[xs: xf, ys: yf, zs: zf] += tprb.resp
+                        xs, xf, ys, yf, zs, zf = self.hrb.situate(self.tpbox)
+                        self.tpbox.resp[xs: xf, ys: yf, zs: zf] += self.hrb.resp
 
                     # TODO: Make separate function
                     # Make a flag to turn this off?
@@ -116,7 +118,6 @@ class Anastasia(DetectorResponseCity):
                     SiPM_resp.append([self.tpbox.resp])
                     self.tpbox.clear_response()
                     # TODO FLUSH EAarray
-
                     processed_events += 1
 
             print(f_out)

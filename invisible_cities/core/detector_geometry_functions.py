@@ -83,8 +83,7 @@ class TrackingPlaneBox(Box):
 
         self.P     =     (self.x_pos,      self.y_pos,      self.z_pos)
         self.shape = (len(self.x_pos), len(self.y_pos), len(self.z_pos))
-
-        self.resp = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
+        self.resp  = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
     def clear_response(self):
@@ -96,7 +95,7 @@ class TrackingPlaneBox(Box):
        return ((self.x_min <= x <= self.x_max) and
                (self.y_min <= y <= self.y_max))
 
-def find_response_borders(center, pitch, dim, absmin, absmax):
+def find_response_borders(center, dim, pitch, absmin, absmax):
     """
     find_response_borders helps initialize MiniTrackingPlaneBox, by
     finding the borders of MiniTrackingPlaneBox around a center, one dimension
@@ -140,7 +139,7 @@ def find_response_borders(center, pitch, dim, absmin, absmax):
 
     return r_center, d_min, d_max
 
-class MiniTrackingPlaneBox(TrackingPlaneBox):
+class MiniTrackingPlaneBox:
     """
     A box within a TrackingPlaneBox. It is a super class of TrackingPlaneBox.
 
@@ -151,46 +150,52 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
     full-size tracking plane box and can describe its own position within the
     full-size tpbox with self.situate()
     """
-    def __init__(self, hit_coords, tpbox,
-                       shape    = (8, 8, 4),
-                       x_absmin = -235 * units.mm,
-                       y_absmin = -235 * units.mm,
-                       z_absmin =    0 * units.mus,
-                       x_absmax =  235 * units.mm,
-                       y_absmax =  235 * units.mm,
-                       z_absmax =  530 * units.mus):
-
-
+    def __init__(self, tpbox):
         self.x_absmin = tpbox.x_min
         self.y_absmin = tpbox.y_min
         self.z_absmin = tpbox.z_min
         self.x_absmax = tpbox.x_max
         self.y_absmax = tpbox.y_max
         self.z_absmax = tpbox.z_max
+        self.x_pitch  = tpbox.x_pitch
+        self.y_pitch  = tpbox.y_pitch
+        self.z_pitch  = tpbox.z_pitch
 
-        # Compute borders
+    def center(self, hit, shape):
+        # I wonder if we want to allow shape to change from hit to hit, hits
+        # that are farther away from EL will create ionization electrons that
+        # will diffuse more.
+
+        # TODO: Profile to see if this is slow
+        if shape[0] * self.x_pitch + self.x_absmin > self.x_absmax:
+            raise ValueError('xdim too large')
+        if shape[1] * self.y_pitch + self.y_absmin > self.y_absmax:
+            raise ValueError('ydim too large')
+        if shape[2] * self.z_pitch + self.z_absmin > self.z_absmax:
+            raise ValueError('zdim too large')
+
+        self.shape = shape
+
         self.rx_center, self.x_min, self.x_max = find_response_borders(
-            hit_coords[0], tpbox.x_pitch, shape[0], self.x_absmin, self.x_absmax)
+            hit[0], shape[0], self.x_pitch, self.x_absmin, self.x_absmax)
         self.ry_center, self.y_min, self.y_max = find_response_borders(
-            hit_coords[1], tpbox.y_pitch, shape[1], self.y_absmin, self.y_absmax)
+            hit[1], shape[1], self.y_pitch, self.y_absmin, self.y_absmax)
         self.rz_center, self.z_min, self.z_max = find_response_borders(
-            hit_coords[2], tpbox.z_pitch, shape[2], self.z_absmin, self.z_absmax)
+            hit[2], shape[2], self.z_pitch, self.z_absmin, self.z_absmax)
 
-        TrackingPlaneBox.__init__(self,
-                                  x_min   = self.x_min,
-                                  x_max   = self.x_max,
-                                  y_min   = self.y_min,
-                                  y_max   = self.y_max,
-                                  z_min   = self.z_min,
-                                  z_max   = self.z_max,
-                                  x_pitch = tpbox.x_pitch,
-                                  y_pitch = tpbox.y_pitch,
-                                  z_pitch = tpbox.z_pitch)
+        self.x_pos = np.linspace(self.x_min,  self.x_max,
+                                (self.x_max - self.x_min) / self.x_pitch + 1,
+                                 dtype=np.float32)
+        self.y_pos = np.linspace(self.y_min,  self.y_max,
+                                (self.y_max - self.y_min) / self.y_pitch + 1,
+                                 dtype=np.float32)
+        self.z_pos = np.linspace(self.z_min,  self.z_max,
+                                (self.z_max - self.z_min) / self.z_pitch + 1,
+                                 dtype=np.float32)
 
-        if shape[0] * self.x_pitch + x_absmin > x_absmax: raise ValueError('xdim too large')
-        if shape[1] * self.y_pitch + y_absmin > y_absmax: raise ValueError('ydim too large')
-        if shape[2] * self.z_pitch + z_absmin > z_absmax: raise ValueError('zdim too large')
-        # note shape saved in TrackingPlaneBox (bad karma?)
+        self.P     = (self.x_pos, self.y_pos, self.z_pos)
+        self.resp  = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
+                              dtype=np.float32)
 
     def situate(self, tpbox):
         """
@@ -203,9 +208,6 @@ class MiniTrackingPlaneBox(TrackingPlaneBox):
         if (self.x_pitch != tpbox.x_pitch or
             self.y_pitch != tpbox.y_pitch or
             self.z_pitch != tpbox.z_pitch):
-            print(self.x_pitch, tpbox.x_pitch)
-            print(self.y_pitch, tpbox.y_pitch)
-            print(self.z_pitch, tpbox.z_pitch)
             raise ValueError('self and tpb have incompatible pitch')
 
         # Compute min indices

@@ -231,7 +231,7 @@ def test_mini_tracking_plane_box_helper_find_response_borders_even_dim():
     dim    =   4
     absmin = -55 * units.mm
     absmax =  55 * units.mm
-    rc, mi, ma = find_response_borders(hits, pitch, dim, absmin, absmax)
+    rc, mi, ma = find_response_borders(hits, dim, pitch, absmin, absmax)
     assert rc == 10
     assert mi == rc - (dim / 2.0 * pitch - pitch / 2.0)
     assert ma == rc + (dim / 2.0 * pitch - pitch / 2.0)
@@ -243,28 +243,22 @@ def test_mini_tracking_plane_box_helper_find_response_borders_oddd_dim():
     dim    =   3
     absmin = -55 * units.mm
     absmax =  55 * units.mm
-    rc, mi, ma = find_response_borders(hits, pitch, dim, absmin, absmax)
+    rc, mi, ma = find_response_borders(hits, dim, pitch, absmin, absmax)
     assert rc == 5
     assert mi == rc - (dim - 1) / 2.0 * pitch
     assert ma == rc + (dim - 1) / 2.0 * pitch
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
 
-def test_mini_tracking_plane_box_dim():
-    shape = (6,7,3)
-    b  = TrackingPlaneBox()
-    rb = MiniTrackingPlaneBox([0,0,0], b, shape=shape)
-    assert rb.shape[0]==shape[0]
-    assert rb.shape[1]==shape[1]
-    assert rb.shape[2]==shape[2]
-
 def test_mini_tracking_plane_box_situate():
+    mini_box_dims = (8,8,4)
     for x,y,z in [[-235*units.mm, -235*units.mm,   0*units.mus],
                   [   0*units.mm,    0*units.mm,  50*units.mus],
                   [ 235*units.mm,  235*units.mm, 530*units.mus]]:
         tp   = 10 * units.mm
         zp   =  2 * units.mus
         tpb  = TrackingPlaneBox(x_pitch=tp, y_pitch=tp, z_pitch=zp)
-        rb   = MiniTrackingPlaneBox([x,y,z],tpb)
+        rb   = MiniTrackingPlaneBox(tpb)
+        rb.center([x,y,z], mini_box_dims)
         inds = rb.situate(tpb)
         assert (rb.x_pos == tpb.x_pos[inds[0]: inds[1]]).all()
         assert (rb.y_pos == tpb.y_pos[inds[2]: inds[3]]).all()
@@ -275,7 +269,8 @@ def test_distribute_gain_3mus():
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
-    b0  = MiniTrackingPlaneBox([0,0,5.5*units.mus], tpbox, shape=(5,5,5))
+    b0  = MiniTrackingPlaneBox(tpbox)
+    b0.center([0,0,5.5*units.mus], (5,5,5))
     FG  = distribute_gain(E, EL, b0)
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
@@ -291,7 +286,8 @@ def test_distribute_gain_2mus():
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=2*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
-    b0  = MiniTrackingPlaneBox([0, 0, 5.5*units.mus], tpbox, shape=(5,5,5))
+    b0  = MiniTrackingPlaneBox(tpbox)
+    b0.center([0, 0, 5.5*units.mus], (5,5,5))
     FG  = distribute_gain(E, EL, b0)
     gf1 = min((b0.z_pos[1] + b0.z_pitch - z) / EL.t_el, 1)
     gf2 = 1-gf1
@@ -306,7 +302,8 @@ def test_distribute_gain_noELt():
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=.01*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
-    b0  = MiniTrackingPlaneBox([0, 0, 5.5*units.mus], tpbox, shape=(5,5,5))
+    b0  = MiniTrackingPlaneBox(tpbox)
+    b0.center([0, 0, 5.5*units.mus], (5,5,5))
     FG  = distribute_gain(E, EL, b0)
     assert np.allclose(FG[0, 0], 0)
     assert np.allclose(FG[0, 1], 1)
@@ -319,7 +316,8 @@ def test_bin_EL_integration_boundaries():
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
     tpbox = TrackingPlaneBox()
-    b0  = MiniTrackingPlaneBox([0, 0,  5.5 * units.mus], tpbox, shape=(5,5,5))
+    b0  = MiniTrackingPlaneBox(tpbox)
+    b0.center([0, 0,  5.5 * units.mus], (5,5,5))
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
