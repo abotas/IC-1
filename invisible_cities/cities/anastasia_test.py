@@ -46,9 +46,6 @@ z_max {z_max}
 x_pitch {x_pitch}
 y_pitch {y_pitch}
 z_pitch {z_pitch}
-wx_dim {wx_dim}
-wy_dim {wy_dim}
-wz_dim {wz_dim}
 t_el {t_el}
 t {t}
 d {d}

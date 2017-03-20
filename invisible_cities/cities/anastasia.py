@@ -34,10 +34,9 @@ class Anastasia(DetectorResponseCity):
                  nprint     = 10000,
                  hpxe       = None,
                  tpbox      = None,
-                 run_number = 0, #TODO what do we do about run_number? and nprint..
+                 run_number = 0,
                  # Parameters added at this level
-                 NEVENTS = 0,
-                 w_dim   = (8, 8, 4)):
+                 NEVENTS = 0):
 
         DetectorResponseCity.__init__(self,
                                       run_number = run_number,
@@ -47,11 +46,8 @@ class Anastasia(DetectorResponseCity):
                                       tpbox      = tpbox,
                                       hpxe       = hpxe)
         self.NEVENTS = NEVENTS
-        self.w_dim   = w_dim
         self.hrb     = MiniTrackingPlaneBox(tpbox)
 
-    # TODO: SHORTEN LINES
-    # TODO: ADD MORE COMMENTS
     def run(self):
         """generate the SiPM maps for each event"""
         with tb.open_file(self.output_file, 'w') as f_out:
@@ -97,7 +93,8 @@ class Anastasia(DetectorResponseCity):
                         # hrb sets attributes describing the positions of
                         # SiPMs that should respond as photons produced by
                         # electrons_h crossing the EL
-                        self.hrb.center(hits_ev[hit], self.w_dim)
+
+                        self.hrb.center(hits_ev[hit], (8,8,4))
                         # TODO Change size of window from hit to hit depending
                         # on z position of hit? (amount of diffusion possible)
 
@@ -171,8 +168,7 @@ def ANASTASIA(argv=sys.argv):
                       y_pitch = conf['y_pitch'] * units.mm  ,
                       z_pitch = conf['z_pitch'] * units.mus),
 
-        NEVENTS  =  conf['NEVENTS'],
-        w_dim    = (conf['wx_dim'], conf['wy_dim'], conf['wz_dim']))
+        NEVENTS  =  conf['NEVENTS'])
 
     t0 = time(); A.run(); t1 = time();
     dt = t1 - t0
