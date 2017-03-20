@@ -243,7 +243,7 @@ def test_mini_tracking_plane_box_helper_find_response_borders_oddd_dim():
     assert ma == rc + (dim - 1) / 2.0 * pitch
     assert len(list(range(int(mi), int(ma + pitch), int(pitch)))) == dim
 
-def test_mini_tracking_plane_box_situate():
+def test_mini_tracking_plane_box_add_hit_resp_to_event_resp():
     mini_box_dims = (8,8,4)
     for x,y,z in [[-235*units.mm, -235*units.mm,   0*units.mus],
                   [   0*units.mm,    0*units.mm,  50*units.mus],

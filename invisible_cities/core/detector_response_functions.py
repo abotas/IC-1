@@ -214,13 +214,13 @@ def SiPM_response(electrons_h, photons, IB, rb):
     """
     """
 
-    resp = np.copy(rb.resp)
+    resp_h = np.copy(rb.resp_h)
     for e, f_e, ib_e   in zip(electrons_h, photons, IB): # electrons
         for i, (f, ib) in enumerate(zip(f_e, ib_e)):     # time bins
             # Compute SiPM response if gain for this e- and time bin > 0
-            if f > 0: resp[:,:, i] += prob_SiPM_photon_detection(rb, e, ib) * f
+            if f > 0: resp_h[:,:, i] += prob_SiPM_photon_detection(rb, e, ib) * f
 
-    return resp
+    return resp_h
 
 def distribute_gain(electrons, hpxe, rb):
     """

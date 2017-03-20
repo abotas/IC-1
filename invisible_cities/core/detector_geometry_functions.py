@@ -196,7 +196,7 @@ class MiniTrackingPlaneBox:
         self.resp_h = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
-    def add_resp_h(self):
+    def add_hit_resp_to_event_resp(self):
         """
         situate returns the indices indicating where in the larger
         TrackingPlaneBox (tpbox), TrackingPlaneResponseBox (self) is

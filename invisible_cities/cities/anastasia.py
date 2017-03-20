@@ -117,21 +117,20 @@ class Anastasia(DetectorResponseCity):
 
                         # Get cumulative response of all SiPMs within hrb to all
                         # the photons produced by electrons_h traveling thru EL
-                        self.hrb.resp = SiPM_response(electrons_h, photons, IB, self.hrb)
+                        self.hrb.resp_h = SiPM_response(
+                            electrons_h, photons, IB, self.hrb)
 
-                        # TODO: Make one line
                         # Add SiPM response to this hit, to the SiPM response
-                        # to the entire event
-                        xs, xf, ys, yf, zs, zf = self.hrb.situate(self.tpbox)
-                        self.tpbox.resp[xs: xf, ys: yf, zs: zf] += self.hrb.resp
+                        # of the entire event
+                        self.hrb.add_hit_resp_to_event_resp()
 
                     # TODO: Make separate function
                     # Make a flag to turn this (and other posson noises off) off?
-                    self.tpbox.resp += np.random.poisson(self.tpbox.resp)
+                    self.hrb.resp_ev += np.random.poisson(self.hrb.resp_ev)
 
                     # Write SiPM map to file
-                    SiPM_resp.append([self.tpbox.resp])
-                    self.tpbox.clear_response()
+                    SiPM_resp.append([self.hrb.resp_ev])
+                    self.hrb.clear_event_response()
                     # TODO FLUSH EAarray
                     processed_events += 1
 
