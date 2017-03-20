@@ -19,6 +19,7 @@ from invisible_cities.core.detector_response_functions import HPXeEL,  \
      generate_ionization_electrons, \
      diffuse_electrons, \
      distribute_gain, \
+     distribute_photons, \
      compute_photon_emmission_boundaries, \
      SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
@@ -103,26 +104,23 @@ class Anastasia(DetectorResponseCity):
                         # Ex: FG[e-, time bin] = 0.2
                         FG = distribute_gain(electrons_h, self.hpxe, self.hrb)
 
+                        # Compute number of photons produced by ionization e-
+                        # in each time bin (same shape as FG)
+                        # photons[e-, time bin] = 7083
+                        photons = distribute_photons(FG, self.hpxe)
+
                         # Compute z-distance of electron to SiPMs during each
                         # time bin. Ex:
                         # IB[e-, time bin] = [zd to SiPMs start, zd to SiPMs end]
                         IB = compute_photon_emmission_boundaries(
                             FG, self.hpxe, self.hrb.shape[2])
 
-                        # TODO make separate function
-                        # Compute number of produced by ionization electrons
-                        # in each time bin (same shape as FG)
-                        # photons[e-, time bin] = 7083
-                        photons  = FG * self.hpxe.Ng / self.hpxe.rf
-                        photons += np.random.normal(
-                            scale=np.sqrt(photons * self.hpxe.g_fano))
-                        # TODO should this be rounded?
 
+                        # Get SiPM response to hit
+                        self.hrb.resp = SiPM_response(electrons_h, photons, IB)
 
-                        # TODO: Make separate function
-                        # Get TrackingPlaneResponseBox response
-                        for e, e_f, e_ib   in zip(electrons_h, photons, IB): # electrons
-                            for i, (f, ib) in enumerate(zip(e_f, e_ib)): # time bins
+                        for e, f_e, ib_e   in zip(electrons_h, photons, IB): # electrons
+                            for i, (f, ib) in enumerate(zip(f_e, ib_e)): # time bins
                                 if f > 0: self.hrb.resp[:,:, i] += SiPM_response(self.hrb, e, ib, f)
 
                         # TODO: Make one line

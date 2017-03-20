@@ -10,6 +10,7 @@ from invisible_cities.core.detector_response_functions import \
      generate_ionization_electrons, \
      diffuse_electrons, \
      distribute_gain, \
+     distribute_photons, \
      compute_photon_emmission_boundaries, \
      SiPM_response, \
      HPXeEL
@@ -200,11 +201,6 @@ def test_tracking_plane_box_positons():
                          z_min = z_min, z_max = z_max,
                          x_pitch = x_pitch, y_pitch = y_pitch, z_pitch = z_pitch)
     P = b.P
-    print(P[0])
-    print('')
-    print(np.linspace(x_min, x_max,  9))
-    #print(P[1])
-    #print(P[2])
     assert(P[0] == np.linspace(x_min, x_max, b.length_x() / b.x_pitch + 1)).all()
     assert(P[1] == np.linspace(y_min, y_max, b.length_y() / b.y_pitch + 1)).all()
     assert(P[2] == np.linspace(z_min, z_max, b.length_z() / b.z_pitch + 1)).all()
@@ -307,6 +303,12 @@ def test_distribute_gain_noELt():
     assert np.allclose(FG[0, 2], 0)
     assert np.allclose(FG[0, 3], 0)
     assert np.allclose(FG[0, 4], 0)
+
+def test_distribute_photons():
+    hpxe = HPXeEL(g_fano=0, rf=.9,)
+    FG = np.array([[.2, .8], [.9, .1], [0, 0], [1, 0]], dtype=np.float32)
+    assert np.allclose(distribute_photons(FG, hpxe),
+                       (FG * hpxe.Ng / hpxe.rf).round())
 
 def test_bin_EL_integration_boundaries():
     z   = 5.3 * units.mus

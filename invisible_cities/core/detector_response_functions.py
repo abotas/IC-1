@@ -239,6 +239,15 @@ def distribute_gain(electrons, hpxe, rb):
                 else: FG[i, j] = (e[2] + hpxe.t_el - z) / hpxe.t_el
     return FG
 
+def distribute_photons(FG, hpxe):
+    """
+    Uses FG from distribute_gain to distribute photons.
+    """
+    photons  = FG * hpxe.Ng / hpxe.rf
+    photons += np.random.normal(scale=np.sqrt(photons * hpxe.g_fano))
+    # Should we bother rounding (Profile this)
+    return photons.round()
+
 def compute_photon_emmission_boundaries(FG, hpxe, z_dim):
     """
     compute_photon_emmission_boundaries computes the z-distances from an
