@@ -64,40 +64,63 @@ class Anastasia(DetectorResponseCity):
                         filters = tbl.filters(self.compression))
 
             processed_events = 0
-            # Loop over each desired file in filespath
+
+            # Loop over the input files
             for fn in self.input_files:
                 if processed_events == self.NEVENTS: break
 
-                # hits_f is a dictionary mapping event_indx to a np.array of hits
+                # get all the hits from a file into a dict mapping event
+                # index to a numpy array containing all the hits for that event
+                # ex_hit = [xcoord, ycoord, zcoord, energy]
                 hits_f = gather_montecarlo_hits(fn)
 
                 # SLOWER IN PYTHON 2.7
                 for hits_ev in hits_f.values():
                     if processed_events == self.NEVENTS: break
 
-                    # Hits is a dict mapping hit ind to a np.array of ionized e-
-                    electrons_ev = generate_ionization_electrons(hits_ev, self.hpxe)
+                    # Generate all the (undiffused) ionization electrons created
+                    # by an event. electrons_ev is a dict mapping hit index to a
+                    # np array of the e- created by that hit.
+                    # electron_ev[hit indx][e-] = [x, y, z] (same pos as hit)
+                    electrons_ev = generate_ionization_electrons(
+                        hits_ev, self.hpxe)
 
                     # SLOWER IN PYTHON 2.7
-                    for i, electrons_h in electrons_ev.items():
+                    for hit, electrons_h in electrons_ev.items():
 
-                        # Diffuse a hit's electrons
+                        # Diffuse a hit's electrons. electrons_h is a np array
+                        # of diffused ionization e- created by one hit
+                        # electrons_h[e-] = [x, y, EL arrival time] (after diff)
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
-                        # Find TrackingPlaneResponseBox within TrackingPlaneBox
-                        self.hrb.center(hits_ev[i], self.w_dim)
+                        # Center the hit response box around the current hit.
+                        # hrb sets attributes describing the positions of
+                        # SiPMs that should respond as photons produced by
+                        # electrons_h crossing the EL
+                        self.hrb.center(hits_ev[hit], self.w_dim)
+                        # TODO Change size of window from hit to hit depending
+                        # on z position of hit? (amount of diffusion possible)
 
-                        # Determine fraction of gain from each electron that will
-                        # be recieved by each time bin as e- crossing EL
+                        # Determine fraction of gain from each ionization e-
+                        # to be recieved by each time bin as e- crossing EL
+                        # Ex: FG[e-, time bin] = 0.2
                         FG = distribute_gain(electrons_h, self.hpxe, self.hrb)
 
-                        # Compute
-                        IB = compute_photon_emmission_boundaries(FG, self.hpxe, self.hrb.shape[2])
+                        # Compute z-distance of electron to SiPMs during each
+                        # time bin. Ex:
+                        # IB[e-, time bin] = [zd to SiPMs start, zd to SiPMs end]
+                        IB = compute_photon_emmission_boundaries(
+                            FG, self.hpxe, self.hrb.shape[2])
 
-                        #TODO make separate function
+                        # TODO make separate function
+                        # Compute number of produced by ionization electrons
+                        # in each time bin (same shape as FG)
+                        # photons[e-, time bin] = 7083
                         photons  = FG * self.hpxe.Ng / self.hpxe.rf
                         photons += np.random.normal(
                             scale=np.sqrt(photons * self.hpxe.g_fano))
+                        # TODO should this be rounded?
+
 
                         # TODO: Make separate function
                         # Get TrackingPlaneResponseBox response
@@ -106,12 +129,13 @@ class Anastasia(DetectorResponseCity):
                                 if f > 0: self.hrb.resp[:,:, i] += SiPM_response(self.hrb, e, ib, f)
 
                         # TODO: Make one line
-                        # Integrate response into larger tracking plane
+                        # Add SiPM response to this hit, to the SiPM response
+                        # to the entire event
                         xs, xf, ys, yf, zs, zf = self.hrb.situate(self.tpbox)
                         self.tpbox.resp[xs: xf, ys: yf, zs: zf] += self.hrb.resp
 
                     # TODO: Make separate function
-                    # Make a flag to turn this off?
+                    # Make a flag to turn this (and other posson noises off) off?
                     self.tpbox.resp += np.random.poisson(self.tpbox.resp)
 
                     # Write SiPM map to file
