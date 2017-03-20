@@ -124,14 +124,14 @@ class Anastasia(DetectorResponseCity):
                         # of the entire event
                         self.hrb.add_hit_resp_to_event_resp()
 
-                    # TODO: Make separate function
+                    # Add poisson noise to num photons detected to simulate the
+                    # fluctuation in number of photons detected
                     # Make a flag to turn this (and other posson noises off) off?
                     self.hrb.resp_ev += np.random.poisson(self.hrb.resp_ev)
 
                     # Write SiPM map to file
                     SiPM_resp.append([self.hrb.resp_ev])
                     self.hrb.clear_event_response()
-                    # TODO FLUSH EAarray
                     processed_events += 1
 
             print(f_out)
