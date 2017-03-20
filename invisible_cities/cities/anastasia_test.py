@@ -13,6 +13,7 @@ from invisible_cities.core.detector_response_functions import \
      distribute_photons, \
      compute_photon_emmission_boundaries, \
      SiPM_response, \
+     prob_SiPM_photon_detection, \
      HPXeEL
 
 from invisible_cities.core.detector_geometry_functions import Box, \
@@ -94,7 +95,7 @@ def test_command_line_anastasia(config_tmpdir):
         conf_file.write(config_file_contents)
     ANASTASIA(['ANASTASIA', '-c', conf_file_name])
 
-def test_SiPM_response():
+def test_prob_SiPM_photon_detection():
     """
     Check that SiPM_response returns correct map for a couple
     electrons
@@ -115,7 +116,7 @@ def test_SiPM_response():
     tpb.shape = (xydim, xydim, 4)
 
     # Get map
-    for e in E: m += SiPM_response(tpb, e, [t + d, d], gain)
+    for e in E: m += prob_SiPM_photon_detection(tpb, e, [t + d, d]) * gain
 
     # Check equality
     for row, x in zip(m, xpos):

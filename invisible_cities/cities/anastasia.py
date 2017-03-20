@@ -115,13 +115,9 @@ class Anastasia(DetectorResponseCity):
                         IB = compute_photon_emmission_boundaries(
                             FG, self.hpxe, self.hrb.shape[2])
 
-
-                        # Get SiPM response to hit
-                        self.hrb.resp = SiPM_response(electrons_h, photons, IB)
-
-                        for e, f_e, ib_e   in zip(electrons_h, photons, IB): # electrons
-                            for i, (f, ib) in enumerate(zip(f_e, ib_e)): # time bins
-                                if f > 0: self.hrb.resp[:,:, i] += SiPM_response(self.hrb, e, ib, f)
+                        # Get cumulative response of all SiPMs within hrb to all
+                        # the photons produced by electrons_h traveling thru EL
+                        self.hrb.resp = SiPM_response(electrons_h, photons, IB, self.hrb)
 
                         # TODO: Make one line
                         # Add SiPM response to this hit, to the SiPM response

@@ -179,7 +179,7 @@ def diffuse_electrons(electrons, hpxe):
     diffused_electrons[:,  2] /= hpxe.dV
     return diffused_electrons
 
-def SiPM_response(rb, e, z_bound, gain):
+def prob_SiPM_photon_detection(rb, e, z_bound):
     """
     SiPM response computes the SiPM response of a plane of SiPMs in one time
     to one electron emmitting photons in the EL.
@@ -192,7 +192,6 @@ def SiPM_response(rb, e, z_bound, gain):
     z_bound: distance boundaries in z from the electron to the SiPMs between
              which the electron is producing photons cast toward the SiPMs in
              the current time bin
-    gain   : the number of photons produced by e during this time bin
 
     returns
     a numpy array containing the SiPM responses to the photons produced by e
@@ -206,10 +205,22 @@ def SiPM_response(rb, e, z_bound, gain):
     DY2 = np.array([dy2 for i in range(rb.shape[1])], dtype=np.float32)
 
     return np.array(
-           gain / (4.0 * (z_bound[0] -  z_bound[1])) \
+           1 / (4.0 * (z_bound[0] -  z_bound[1])) \
            * (1.0 / np.sqrt(DX2 + DY2 + z_bound[1]**2) \
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)),
            dtype=np.float32)
+
+def SiPM_response(electrons_h, photons, IB, rb):
+    """
+    """
+
+    resp = np.copy(rb.resp)
+    for e, f_e, ib_e   in zip(electrons_h, photons, IB): # electrons
+        for i, (f, ib) in enumerate(zip(f_e, ib_e)):     # time bins
+            # Compute SiPM response if gain for this e- and time bin > 0
+            if f > 0: resp[:,:, i] += prob_SiPM_photon_detection(rb, e, ib) * f
+
+    return resp
 
 def distribute_gain(electrons, hpxe, rb):
     """
