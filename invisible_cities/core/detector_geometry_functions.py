@@ -86,10 +86,6 @@ class TrackingPlaneBox(Box):
         self.resp  = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
-    def clear_response(self):
-        self.resp = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
-                              dtype=np.float32)
-
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
        return ((self.x_min <= x <= self.x_max) and
@@ -160,6 +156,9 @@ class MiniTrackingPlaneBox:
         self.x_pitch  = tpbox.x_pitch
         self.y_pitch  = tpbox.y_pitch
         self.z_pitch  = tpbox.z_pitch
+        self.resp_ev  = np.zeros((tpbox.shape[0] ,
+                                  tpbox.shape[1] ,
+                                  tpbox.shape[2]),dtype=np.float32)
 
     def center(self, hit, shape):
         # I wonder if we want to allow shape to change from hit to hit, hits
@@ -192,12 +191,12 @@ class MiniTrackingPlaneBox:
         self.z_pos = np.linspace(self.z_min,  self.z_max,
                                 (self.z_max - self.z_min) / self.z_pitch + 1,
                                  dtype=np.float32)
+        self.P = (self.x_pos, self.y_pos, self.z_pos)
 
-        self.P     = (self.x_pos, self.y_pos, self.z_pos)
-        self.resp  = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
+        self.resp_h = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
                               dtype=np.float32)
 
-    def situate(self, tpbox):
+    def add_resp_h(self):
         """
         situate returns the indices indicating where in the larger
         TrackingPlaneBox (tpbox), TrackingPlaneResponseBox (self) is
@@ -205,15 +204,11 @@ class MiniTrackingPlaneBox:
         should situate not just 'situate' but integrate self.resp into
         tpb.resp?
         """
-        if (self.x_pitch != tpbox.x_pitch or
-            self.y_pitch != tpbox.y_pitch or
-            self.z_pitch != tpbox.z_pitch):
-            raise ValueError('self and tpb have incompatible pitch')
 
         # Compute min indices
-        ix_s = (self.x_min - tpbox.x_min) / tpbox.x_pitch
-        iy_s = (self.y_min - tpbox.y_min) / tpbox.y_pitch
-        iz_s = (self.z_min - tpbox.z_min) / tpbox.z_pitch
+        ix_s = (self.x_min - self.x_absmin) / self.x_pitch
+        iy_s = (self.y_min - self.y_absmin) / self.y_pitch
+        iz_s = (self.z_min - self.z_absmin) / self.z_pitch
         if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) not an integer')
         if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) not an integer')
         if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')
@@ -224,5 +219,11 @@ class MiniTrackingPlaneBox:
         iz_f = iz_s + self.shape[2]
 
         inds = np.array([ix_s, ix_f, iy_s, iy_f, iz_s, iz_f], dtype=np.float32)
-        inds = np.array(np.round(inds), dtype=np.int32)
-        return inds
+        [xs, xf, ys, yf, zs, zf] = np.array(np.round(inds),   dtype=np.int32)
+
+        self.resp_ev[xs: xf, ys: yf, zs: zf] += self.resp_h
+
+        return -1
+
+    def clear_event_response(self):
+        self.resp_ev = np.zeros(self.resp_ev.shape, dtype=np.float32)
