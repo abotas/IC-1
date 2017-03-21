@@ -94,7 +94,6 @@ class Anastasia(DetectorResponseCity):
                         # hrb sets attributes describing the positions of
                         # SiPMs that should respond as photons produced by
                         # electrons_h crossing the EL
-
                         self.hrb.center(hits_ev[hit], (8,8,4))
                         # TODO Change size of window from hit to hit depending
                         # on z position of hit? (amount of diffusion possible)
@@ -112,8 +111,7 @@ class Anastasia(DetectorResponseCity):
                         # Compute z-distance of electron to SiPMs during each
                         # time bin. Ex:
                         # IB[e-, time bin] = [zd to SiPMs start, zd to SiPMs end]
-                        IB = compute_photon_emmission_boundaries(
-                            FG, self.hpxe, self.hrb.shape[2])
+                        IB = compute_photon_emmission_boundaries(FG, self.hpxe)
 
                         # Get cumulative response of all SiPMs within hrb to all
                         # the photons produced by electrons_h traveling thru EL
