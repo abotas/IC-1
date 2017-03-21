@@ -311,7 +311,7 @@ def test_distribute_photons():
     assert np.allclose(distribute_photons(FG, hpxe),
                        (FG * hpxe.Ng / hpxe.rf).round())
 
-def test_bin_EL_integration_boundaries():
+def test_photon_emmission_z_boundaries():
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
@@ -322,7 +322,7 @@ def test_bin_EL_integration_boundaries():
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
     FG  = np.array([[0, gf1, gf2, gf3, 0]])
-    IB  = compute_photon_emmission_boundaries(FG, EL, b0.shape[2])
+    IB  = compute_photon_emmission_boundaries(FG, EL)
     ib0 = np.array([EL.d + EL.t, EL.d + EL.t],    dtype=np.float32)
     ib1 = np.array([ib0[0], ib0[1] - gf1 * EL.d], dtype=np.float32)
     ib2 = np.array([ib1[1], ib1[1] - gf2 * EL.d], dtype=np.float32)

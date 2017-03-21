@@ -74,8 +74,8 @@ class HPXeEL:
 def gather_montecarlo_hits(filepath):
     """
     gather_montecarlo_hits gathers all the hits from a pytable in filepath and
-    puts them in a dictionary. The dictionary maps event index to all of that
-    event's hits.
+    puts them in a dictionary. The dictionary maps event index to the hits in
+    that event.
 
     args
     filepath: the path to an input file
@@ -84,30 +84,35 @@ def gather_montecarlo_hits(filepath):
     file_hits: a dictionary mapping event_indx, named by nexus -->
                hits_ev, a np.array with all the hits in event event_indx
                hits_ev has shape (num hits, 4) and can by index as follows:
-               hits_ev[hit, x coordinate, y coordinate, z coordinate, energy].
+               hits_ev[hit, x coordinate, y coordinate, z coordinate, energy]
+               and file_hits[ev] = hits_ev
     """
-    f      = tb.open_file(filepath, 'r')
-    ptab   = f.root.MC.MCTracks
-    hits_f = {}
-    ev     = ptab[0]['event_indx']
-    s_row  = 0
+    with tb.open_file(filepath, 'r') as f:
+        ptab   = f.root.MC.MCTracks
+        hits_f = {}
+        ev     = ptab[0]['event_indx']
+        s_row  = 0
 
-    # Iterate over the hits
-    for row in ptab.iterrows():
+        # Iterate over the rows in the pytable; each row contains a distinct hit
+        for row in ptab.iterrows():
 
-        # Check for new events
-        if ev != row['event_indx'] or row.nrow == ptab.nrows - 1:
-            # Bad karma? A trick to record the last event in the file
-            if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
-            else:                          f_row = row.nrow
-            hits_ev = np.empty((f_row - s_row, 4), dtype=np.float32)
-            hits_ev[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
-            hits_ev[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
-            hits_f[ev]     = hits_ev
-            ev    = row['event_indx']
-            s_row = row.nrow
+            # We want to gather the hits event by event so, here we check
+            # for a change in event_indx to signal start of new event
+            # * 'or row.nrow == ptab.nrows - 1' needed to gather hits from last
+            # * event in the file
+            if ev != row['event_indx'] or row.nrow == ptab.nrows - 1:
 
-    f.close()
+                # Find start and finish rows (hits) in previous event
+                if row.nrow == ptab.nrows - 1: f_row = row.nrow + 1
+                else: f_row = row.nrow
+                hits_ev = np.empty((f_row - s_row, 4), dtype=np.float32)
+                # Get extract hit position and energy from pytable
+                hits_ev[:, :3] = ptab[s_row : f_row]['hit_position'] * units.mm
+                hits_ev[:,  3] = ptab[s_row : f_row]['hit_energy'  ] * units.MeV
+                hits_f[ev]     = hits_ev  # put hits for ev in the hits_f dict
+                ev    = row['event_indx'] # update ev
+                s_row = row.nrow          # update start row for ev
+
     return hits_f
 
 def generate_ionization_electrons(hits_ev, hpxe):
@@ -135,12 +140,15 @@ def generate_ionization_electrons(hits_ev, hpxe):
 
     """
     electrons_ev = {}
+
+    # Create the ionization e- for each hit
     for i, h in enumerate(hits_ev):
+        # determine number of ionization e- produced by h with energy h[3]
         n_ie  = hpxe.ionization_electrons(h[3])
         n_ie += np.random.normal(scale=np.sqrt(n_ie * hpxe.ie_fano))
         electrons_h     = np.empty((int(round(n_ie)), 3), dtype=np.float32)
-        electrons_h[:]  = h[:3]
-        electrons_ev[i]  = electrons_h
+        electrons_h[:]  = h[:3] # set ionization e- positions to hit position
+        electrons_ev[i] = electrons_h # stick in dictionary
     return electrons_ev
 
 def diffuse_electrons(electrons, hpxe):
@@ -164,11 +172,8 @@ def diffuse_electrons(electrons, hpxe):
                difference that gausian noise has been added to the electron
                positions and diffused_electrons[:, 2] is in units of time
     """
-    # Avoid modifying in place?
-    diffused_electrons = np.copy(electrons)
-
-    # sqrt dist from EL grid
-    sd = np.sqrt(electrons[:, 2] / units.mm * units.m)
+    diffused_electrons = np.copy(electrons) # TODO time profile
+    sd = np.sqrt(electrons[:, 2] / units.mm * units.m)  # sqrt dist from EL grid
 
     # mu=0, sig=lat_diff * sqrt(m)
     # TODO make sure sigma is correct
@@ -181,21 +186,24 @@ def diffuse_electrons(electrons, hpxe):
 
 def prob_SiPM_photon_detection(rb, e, z_bound):
     """
-    SiPM response computes the SiPM response of a plane of SiPMs in one time
-    to one electron emmitting photons in the EL.
+    prob_SiPM_photon_detection computes the SiPM response of a plane of SiPMs
+    (one time bin) to one electron emmitting photons in the EL
 
     args
-    rb     : a MiniTrackingPlaneBox that should contain all the SiPMs that in
-             close proximity to. .xpos and .ypos are used to calculate the
-             distances of the SiPMs (in x and y) in this minibox to the electron
-    e      : an electron, a numpy array [xcoord, ycoord, zcoord]
+    rb     : an instance of MiniTrackingPlaneBox or TrackingPlaneBox from which
+             .xpos and .ypos are used to calculate the distances of the SiPMs
+             (in x and y) to the electron crossing the EL
+    e      : an electron, a (3,) shaped numpy array [xcoord, ycoord, zcoord]
     z_bound: distance boundaries in z from the electron to the SiPMs between
              which the electron is producing photons cast toward the SiPMs in
-             the current time bin
+             the current time bin. (e may have entered the EL or may exit the EL
+             during another time bin. in this case photons are not being cast
+             from across the entire width of the EL, just a subsection of it.)
 
     returns
-    a numpy array containing the SiPM responses to the photons produced by e
-    during this time bin
+    a numpy array of shape (len(rb.x_pos), len(rb.y_pos), len(rb.zpos)),
+    containing the SiPM responses to the photons produced by e during this time
+    bin.
     """
 
     # Calculate the xy distances only once
@@ -210,67 +218,156 @@ def prob_SiPM_photon_detection(rb, e, z_bound):
            -  1.0 / np.sqrt(DX2 + DY2 + z_bound[0]**2)),
            dtype=np.float32)
 
-def SiPM_response(electrons_h, photons, IB, rb):
+def SiPM_response(electrons, photons, IB, rb):
     """
-    """
+    SiPM_response gets the SiPM response of rb to electrons, calling
+    prob_SiPM_photon_detection to get the SiPM response of each time bin of
+    SiPMs to each electrons
 
-    resp_h = np.copy(rb.resp_h)
-    for e, f_e, ib_e   in zip(electrons_h, photons, IB): # electrons
-        for i, (f, ib) in enumerate(zip(f_e, ib_e)):     # time bins
+    args
+    electrons: a np array of electrons where
+               electrons[e-] = [x, y, time reached EL]
+    photons  : the np array containing the number of photons produced by each
+               e- crossing the EL, during each time bin
+               photons[e-] = [0, 9123, 1050] (if there were 3 time bins)
+
+    IB       : contains the z_bound for each electron, for each time_bin
+               (refer to prob_SiPM_photon_detection docstring for z_bound info)
+
+    rb       : an instance of MiniTrackingPlaneBox. It us used to get the shape
+               of the box of SiPMs that will respond to photons produced by
+               electrons. It also passes parameters to prob_SiPM_photon_detection
+
+    returns
+    resp     : the cumulative response of rb to all the electrons. resp is a np
+               array with the sape of rb, where each entry the response of a
+               SiPM and resp is organized by resp[x-index, y-index, time-index]
+               of SiPM within rb
+    """
+    resp = np.zeros_like(rb.resp_h)
+    for e, f_e, ib_e   in zip(electrons, photons, IB):   # loop over electrons
+        for i, (f, ib) in enumerate(zip(f_e, ib_e)):     # loop over time bins
             # Compute SiPM response if gain for this e- and time bin > 0
-            if f > 0: resp_h[:,:, i] += prob_SiPM_photon_detection(rb, e, ib) * f
-
-    return resp_h
+            if f > 0:
+                # rb is the response box,
+                # e  is an e- in electrons,
+                # ib is an z-integration boundary for this e- for this time bin
+                # f  is the number of photons produced by e- in this time bin
+                resp[:,:, i] += prob_SiPM_photon_detection(rb, e, ib) * f
+    return resp
 
 def distribute_gain(electrons, hpxe, rb):
     """
     distribute_gain computes the fraction of the gain produced by each electron,
-    that is received by each time bin of SiPMs in rb
+    that is received by each time bin of SiPMs in rb. (not all the photons
+    produced by an ionization e- are received by one time bin necessarily)
 
     args
+    electrons: electrons: a np array of electrons where
+               electrons[e-] = [x, y, time reached EL]
+    hpxe     : an instance of HPXeEL. used to get the time it takes to cross
+               the EL (t_el), the width of the EL (d), the dist from the end
+               of the EL to the SiPM plane (t)
+    rb       : an instance of MiniTrackingPlaneBox or TrackingPlaneBox. It is
+               used to access information about the z positions of SiPMs for
+               which we plan to compute responses to electrons.
+    returns
+    FG       : a np array containing the fraction of the total gain produced
+               during each time bin by each e- crossing the EL
+               ex: FG[e-] = [0, .9, .1] (here rb has 3 time bins)
     """
     FG  = np.zeros((len(electrons), len(rb.z_pos)), dtype=np.float32)
 
-    # electron z-coordinates in units of time bin
+    # TS is a np array containing the time that each e- reaches the EL in units
+    # of time bin. ex: TS[e-] = 0.25 if e- reached the EL 1/4 of the way thru
+    # the 0th time bin
     TS  = (electrons[:, 2] - rb.z_pos[0]) / rb.z_pitch
     fTS = np.array(np.floor(TS), dtype=np.int16)
 
-    for i, (e, f, ts) in enumerate(zip(electrons, fTS, TS)):
-        for j, z in enumerate(rb.z_pos):
-            # electron enters EL (between time=z and time=z + z_pitch)
+    for i, (e, f, ts) in enumerate(zip(electrons, fTS, TS)):# loop over electrons
+        for j, z in enumerate(rb.z_pos):                    # loop over time bins
+
+            # There are 2 cases in which FG[i,j] != 0
+            # Case 1: electron enters EL (between time=z and time=z + z_pitch)
             if j == f:
                 # Calculate gain in first responsive slice
                 FG[i, j] = min((j + 1 - ts) * rb.z_pitch / hpxe.t_el, 1)
-            # electron is still crossing EL
+
+            # Case 2: electron had already entered EL and is still crossing
             elif j > f and z < e[2] + hpxe.t_el and f > 0:
-                # electron crossing EL over entire time bin
+
+                # 2a: electron crossing EL over entire time bin
                 if z + rb.z_pitch  <= e[2] + hpxe.t_el:
+
+                    # FG == time bin size / t to cross EL
                     FG[i, j] = rb.z_pitch / hpxe.t_el
-                # electron finishes crossing EL during time bin
-                else: FG[i, j] = (e[2] + hpxe.t_el - z) / hpxe.t_el
+
+                # 2b: electron finishes crossing EL during time bin
+                else:
+                    # FG == (t e- crossed EL - t timebin start) / t to cross EL
+                    FG[i, j] = (e[2] + hpxe.t_el - z) / hpxe.t_el
     return FG
 
 def distribute_photons(FG, hpxe):
     """
-    Uses FG from distribute_gain to distribute photons.
+    Uses FG from distribute_gain to distribute photons produced by e- across
+    time bins.
+
+    arguments
+    FG       : a np array containing the fraction of the total gain produced
+               during each time bin by each e- crossing the EL
+               ex: FG[e-] = [0, .9, .1] (here rb has 3 time bins)
+    hpxe     : an instance of HPXeEL. uses:
+               .Ng, gain per ionization e-)
+               .rf, reduction factor that reduce computational complexity
+               by artificially reducing the number of ionization e- produced by
+               each hit. gain produced by these e- is then correspondingly
+               increased. This is float in (0, 1]
+               g_fano, the fano factor that contributes to fluctuations in
+               the number of photons produced by an ionization e-
     """
+    # photons = fraction of gain from e- * (gain / e-) / reduction factor
     photons  = FG * hpxe.Ng / hpxe.rf
     photons += np.random.normal(scale=np.sqrt(photons * hpxe.g_fano))
-    # Should we bother rounding (Profile this)
+
+    # TODO time profile
     return photons.round()
 
-def compute_photon_emmission_boundaries(FG, hpxe, z_dim):
+def compute_photon_emmission_boundaries(FG, hpxe):
     """
-    compute_photon_emmission_boundaries computes the z-distances from an
-    electron crossing the EL to the SiPMs from which the electron is producing
-    photons.
+    compute_photon_emmission_boundaries uses FG to compute the z-distances
+    between the e- crossing the EL and the SiPM plane during each time bin.
+    More specifically, it computes the start distance and the end distance of
+    each e- to the SiPM plane during each time bin. These z-distances are a
+    necessary parameter to the current prob_SiPM_photon_detection function.
+    * compute_photon_emmission_boundaries uses FG to compute these z-dists
+    * because we (for now) assume that the e- travel at uniform speed across
+    * the EL, and produce photons uniformly while crossing the EL. In this case
+    * the fraction of the gain in produced by an e- in each time bin equals the
+    * fraction of the EL width traversed during that time bin.
+
+    args
+    FG       : a np array containing the fraction of the total gain produced
+               during each time bin by each e- crossing the EL
+               ex: FG[e-] = [0, .9, .1] (here rb has 3 time bins)
+    hpxe     : an instance of HPXeEL. this function uses,
+               .d the width of the EL
+               .t the distance from the end of the EL to the SiPM plane
+
+    returns
+    IB       : a np array containing the initial and final distances between
+               each e- and the SiPM plane during each time bin (as the e- is
+               crossing the EL)
+               IB[e-, time bin] = [initial d to EL, final d to EL]
     """
-    IB = np.zeros((len(FG), z_dim, 2), dtype=np.float32) + (hpxe.d + hpxe.t)
+
+    # Initializing I
+    IB = np.zeros((*FG.shape, 2), dtype=np.float32) + (hpxe.d + hpxe.t)
 
     IB[:, 0, 1] -= FG[:, 0] * hpxe.d
-    for i in range(1, z_dim):
+    for i in range(1, FG.shape[1]):
         IB[:, i, 0] = IB[:, i - 1, 1]
-        IB[:, i, 1] = IB[:, i, 0] - FG[:, i] * hpxe.d
+        IB[:, i, 1] = IB[:, i,     0] - FG[:, i] * hpxe.d
 
     # Some electrons may have started traversing EL before the rb.zpos[0]
     # Then they've already traveled the distance below before rb.zpos[0]
