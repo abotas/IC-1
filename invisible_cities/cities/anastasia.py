@@ -90,12 +90,13 @@ class Anastasia(DetectorResponseCity):
                         # electrons_h[e-] = [x, y, EL arrival time] (after diff)
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
-                        # Center the hit response box around the current hit.
-                        # hrb sets attributes describing the positions of
-                        # SiPMs that should respond as photons produced by
-                        # electrons_h crossing the EL
-                        self.hrb.center(hits_ev[hit], (8,8,4))
-                        # TODO Change size of window from hit to hit depending
+                        hrb_shape = (8,8,4)
+                        # Center a hrb of size hrb_shape around the center of
+                        # where the hit should reach the EL (z=time).
+                        self.hrb.center(
+                            (*hits_ev[hit,:2], hits_ev[hit, 2] / self.hpxe.dV),
+                            hrb_shape)
+                        # TODO: Change size of window from hit to hit depending
                         # on z position of hit? (amount of diffusion possible)
 
                         # Determine fraction of gain from each ionization e-

@@ -42,8 +42,7 @@ class TrackingPlaneBox(Box):
     Defines a Tracking Plane Box. Note in a TrackingPlaneBox
     the z dimension is in units of time.
 
-    Additionally, a TrackingPlaneBox contains SiPMs at regular pitches
-    in x, y,and z.
+    Additionally, a TrackingPlaneBox contains the positions of SiPMS
     """
 
     def __init__(self, x_min = -235 * units.mm,
@@ -83,8 +82,6 @@ class TrackingPlaneBox(Box):
 
         self.P     =     (self.x_pos,      self.y_pos,      self.z_pos)
         self.shape = (len(self.x_pos), len(self.y_pos), len(self.z_pos))
-        self.resp  = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
-                              dtype=np.float32)
 
     def in_sipm_plane(self, x, y):
        """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
@@ -137,14 +134,16 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
 
 class MiniTrackingPlaneBox:
     """
-    A box within a TrackingPlaneBox. It is a super class of TrackingPlaneBox.
+    A tracking plane box within a TrackingPlaneBox.
 
-    MiniTrackingPlaneBox is useful, more so than just a smaller instance of
-    TrackingPlaneBox, because it is aware it is within a larger TrackingPlaneBox.
+    Upon initialization, it takes a tracking plane box to know the absolute
+    boundaries in x, y, and time, of the tracking plane responses for an event.
 
-    Upon initialization, it self-centers around an x,y,z coordinate within a
-    full-size tracking plane box and can describe its own position within the
-    full-size tpbox with self.situate()
+    It can then use a method, center, to self-center a mini tpbox around an
+    x,y,z coordinate within the full-size tracking plane box it was initialized
+    with.
+
+    Finally, it can a
     """
     def __init__(self, tpbox):
         self.x_absmin = tpbox.x_min
@@ -156,16 +155,27 @@ class MiniTrackingPlaneBox:
         self.x_pitch  = tpbox.x_pitch
         self.y_pitch  = tpbox.y_pitch
         self.z_pitch  = tpbox.z_pitch
+
+        # SiPM response to an event
         self.resp_ev  = np.zeros((tpbox.shape[0] ,
                                   tpbox.shape[1] ,
-                                  tpbox.shape[2]),dtype=np.float32)
+                                  tpbox.shape[2]), dtype=np.float32)
 
-    def center(self, hit, shape):
-        # I wonder if we want to allow shape to change from hit to hit, hits
-        # that are farther away from EL will create ionization electrons that
-        # will diffuse more.
+    def center(self, p_hit, shape):
+        """
+        center finds the position of the MiniTrackingPlaneBox within the tpbox
+        the it was initialized with. It then sets attributes x,y,z_pos of the
+        SiPMs in the mini box and initializes a zeros np array of for SiPM
+        responses within the new positions of the mini box
 
-        # TODO: Profile to see if this is slow
+        args
+        self :
+        p_hit: the position of a hit an with x,y, time positions of where the
+               center of the hit is expected to reach the EL
+        shape: the dimensions in SiPMs of the mini tracking box to create arond
+               p_hit
+        """
+
         if shape[0] * self.x_pitch + self.x_absmin > self.x_absmax:
             raise ValueError('xdim too large')
         if shape[1] * self.y_pitch + self.y_absmin > self.y_absmax:
@@ -176,11 +186,11 @@ class MiniTrackingPlaneBox:
         self.shape = shape
 
         self.rx_center, self.x_min, self.x_max = find_response_borders(
-            hit[0], shape[0], self.x_pitch, self.x_absmin, self.x_absmax)
+            p_hit[0], shape[0], self.x_pitch, self.x_absmin, self.x_absmax)
         self.ry_center, self.y_min, self.y_max = find_response_borders(
-            hit[1], shape[1], self.y_pitch, self.y_absmin, self.y_absmax)
+            p_hit[1], shape[1], self.y_pitch, self.y_absmin, self.y_absmax)
         self.rz_center, self.z_min, self.z_max = find_response_borders(
-            hit[2], shape[2], self.z_pitch, self.z_absmin, self.z_absmax)
+            p_hit[2], shape[2], self.z_pitch, self.z_absmin, self.z_absmax)
 
         self.x_pos = np.linspace(self.x_min,  self.x_max,
                                 (self.x_max - self.x_min) / self.x_pitch + 1,
@@ -198,11 +208,9 @@ class MiniTrackingPlaneBox:
 
     def add_hit_resp_to_event_resp(self):
         """
-        situate returns the indices indicating where in the larger
-        TrackingPlaneBox (tpbox), TrackingPlaneResponseBox (self) is
-
-        should situate not just 'situate' but integrate self.resp into
-        tpb.resp?
+        add the SiPM response to the hit to the SiPM response of an event.
+        This requires finding where the minitpbox is situated within the tpbox
+        and then adding resp_h to resp_ev
         """
 
         # Compute min indices
