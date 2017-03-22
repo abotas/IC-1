@@ -37,6 +37,12 @@ class Box:
     def volume(self):
         return  self.length_x() * self.length_y() * self.length_z()
 
+def sipm_pos(d_min, d_max, d_pitch):
+    """returns a np array of the SiPM positions along one dimension"""
+    return np.linspace(d_min, d_max, d_max - d_min) / d_pitch + 1,
+        dtype=np.float32)
+
+
 class TrackingPlaneBox(Box):
     """
     Defines a Tracking Plane Box. Note in a TrackingPlaneBox
@@ -70,23 +76,12 @@ class TrackingPlaneBox(Box):
         self.x_pitch = x_pitch
         self.y_pitch = y_pitch
         self.z_pitch = z_pitch
-        self.x_pos = np.linspace(self.x_min,  self.x_max,
-                                (self.x_max - self.x_min) / self.x_pitch + 1,
-                                 dtype=np.float32)
-        self.y_pos = np.linspace(self.y_min,  self.y_max,
-                                (self.y_max - self.y_min) / self.y_pitch + 1,
-                                 dtype=np.float32)
-        self.z_pos = np.linspace(self.z_min,  self.z_max,
-                                (self.z_max - self.z_min) / self.z_pitch + 1,
-                                 dtype=np.float32)
-
+        self.x_pos = sipm_pos(x_min, x_max, x_pitch)
+        self.y_pos = sipm_pos(y_min, y_max, y_pitch)
+        self.z_pos = sipm_pos(z_min, z_max, z_pitch)
         self.P     =     (self.x_pos,      self.y_pos,      self.z_pos)
         self.shape = (len(self.x_pos), len(self.y_pos), len(self.z_pos))
 
-    def in_sipm_plane(self, x, y):
-       """Return True if xmin <= x <= xmax and ymin <= y <= ymax"""
-       return ((self.x_min <= x <= self.x_max) and
-               (self.y_min <= y <= self.y_max))
 
 def find_response_borders(center, dim, pitch, absmin, absmax):
     """
@@ -183,8 +178,6 @@ class MiniTrackingPlaneBox:
         if shape[2] * self.z_pitch + self.z_absmin > self.z_absmax:
             raise ValueError('zdim too large')
 
-        self.shape = shape
-
         self.rx_center, self.x_min, self.x_max = find_response_borders(
             p_hit[0], shape[0], self.x_pitch, self.x_absmin, self.x_absmax)
         self.ry_center, self.y_min, self.y_max = find_response_borders(
@@ -192,19 +185,12 @@ class MiniTrackingPlaneBox:
         self.rz_center, self.z_min, self.z_max = find_response_borders(
             p_hit[2], shape[2], self.z_pitch, self.z_absmin, self.z_absmax)
 
-        self.x_pos = np.linspace(self.x_min,  self.x_max,
-                                (self.x_max - self.x_min) / self.x_pitch + 1,
-                                 dtype=np.float32)
-        self.y_pos = np.linspace(self.y_min,  self.y_max,
-                                (self.y_max - self.y_min) / self.y_pitch + 1,
-                                 dtype=np.float32)
-        self.z_pos = np.linspace(self.z_min,  self.z_max,
-                                (self.z_max - self.z_min) / self.z_pitch + 1,
-                                 dtype=np.float32)
-        self.P = (self.x_pos, self.y_pos, self.z_pos)
-
-        self.resp_h = np.zeros((self.shape[0], self.shape[1], self.shape[2]),
-                              dtype=np.float32)
+        self.x_pos  = sipm_pos(x_min, x_max, x_pitch)
+        self.y_pos  = sipm_pos(y_min, y_max, y_pitch)
+        self.z_pos  = sipm_pos(z_min, z_max, z_pitch)
+        self.P      = (self.x_pos, self.y_pos, self.z_pos)
+        self.shape  = shape
+        self.resp_h = np.zeros(shape, dtype=np.float32)
 
     def add_hit_resp_to_event_resp(self):
         """
