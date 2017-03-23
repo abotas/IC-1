@@ -359,6 +359,7 @@ def compute_photon_emmission_boundaries(FG, hpxe):
                each e- and the SiPM plane during each time bin (as the e- is
                crossing the EL)
                IB[e-, time bin] = [initial d to EL, final d to EL]
+               These bounds are a necessary input to prob_SiPM_photon_detection
     """
 
     # Initializing I

@@ -180,18 +180,6 @@ def test_tracking_plane_innerbox():
     test_box_lengths(b)
     test_box_volume(b)
 
-def test_tracking_plane_box_in_sipm_plane_method():
-    b = TrackingPlaneBox()
-    assert     b.in_sipm_plane(-235   * units.mm, -235 * units.mm)
-    assert     b.in_sipm_plane( 235   * units.mm,  235 * units.mm)
-    assert     b.in_sipm_plane( 235   * units.mm, -235 * units.mm)
-    assert     b.in_sipm_plane(-235   * units.mm,  235 * units.mm)
-    assert     b.in_sipm_plane(   1   * units.mm,    0 * units.mm)
-    assert not b.in_sipm_plane(-235.1 * units.mm,    0 * units.mm)
-    assert not b.in_sipm_plane( 236   * units.mm,    0 * units.mm)
-    assert not b.in_sipm_plane(   0   * units.mm,  236 * units.mm)
-    assert not b.in_sipm_plane(   0   * units.mm, -236 * units.mm)
-
 def test_tracking_plane_box_positons():
     x_min   = -20 * units.mm ; x_max = 20 * units.mm
     y_min   = -20 * units.mm ; y_max = 20 * units.mm
@@ -205,6 +193,21 @@ def test_tracking_plane_box_positons():
     assert(P[0] == np.linspace(x_min, x_max, b.length_x() / b.x_pitch + 1)).all()
     assert(P[1] == np.linspace(y_min, y_max, b.length_y() / b.y_pitch + 1)).all()
     assert(P[2] == np.linspace(z_min, z_max, b.length_z() / b.z_pitch + 1)).all()
+
+def test_determine_hrb_size():
+    hpxe  = HPXeEL(dV      =  1 * units.mm/units.mus,
+                   diff_xy = 10 * units.mm/np.sqrt(units.m),
+                   diff_z  =  3 * units.mm/np.sqrt(units.m))
+    tpbox = TrackingPlaneBox(x_pitch = 10 * units.mm,
+                             y_pitch = 10 * units.mm,
+                             z_pitch =  2 * units.mus)
+
+    print(determine_hrb_size(100, hpxe, tpbox, nsig=3))
+    print(determine_hrb_size(500, hpxe, tpbox, nsig=3))
+    print(determine_hrb_size(500, hpxe, tpbox, nsig=1))
+
+    assert False
+
 
 def test_HPXeEL_attributes():
     D = HPXeEL()

@@ -90,6 +90,9 @@ class Anastasia(DetectorResponseCity):
                         # electrons_h[e-] = [x, y, EL arrival time] (after diff)
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
+
+
+                        hrb_shape = deterimine_hrb_size(hit, hpxe)
                         hrb_shape = (8,8,4)
                         # Center a hrb of size hrb_shape around the center of
                         # where the hit should reach the EL (z=time).
