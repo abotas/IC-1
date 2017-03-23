@@ -39,9 +39,8 @@ class Box:
 
 def sipm_pos(d_min, d_max, d_pitch):
     """returns a np array of the SiPM positions along one dimension"""
-    return np.linspace(d_min, d_max, d_max - d_min) / d_pitch + 1,
+    return np.linspace(d_min, d_max, (d_max - d_min) / d_pitch + 1,
         dtype=np.float32)
-
 
 class TrackingPlaneBox(Box):
     """
@@ -81,7 +80,6 @@ class TrackingPlaneBox(Box):
         self.z_pos = sipm_pos(z_min, z_max, z_pitch)
         self.P     =     (self.x_pos,      self.y_pos,      self.z_pos)
         self.shape = (len(self.x_pos), len(self.y_pos), len(self.z_pos))
-
 
 def find_response_borders(center, dim, pitch, absmin, absmax):
     """
@@ -126,6 +124,31 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
         d_min -= shift; d_max -= shift; r_center -= shift
 
     return r_center, d_min, d_max
+
+def deterimine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
+    """
+    determine_hrb_size determines the dimensions of the tracking plane box that
+    are expected to respond to the photons produced by the ionization e-
+    produced by hit.
+
+    args
+    hit_zd: the distance of the hit to the EL
+    hpxe  : an instance of an HPXeEL, necessary to know the drift speed,
+            and diffusion constants in the current configuration
+    tpbox : an instance of TrackingPlaneBox, necessary to know the pitch
+            between SiPMs in x,y,z.
+    nsig  : number of sigma that we want
+
+    returns
+    x_dim, y_dim, z_dim: the dimensions of the tpbox expected to respond to hit
+    """
+    xy_dist =  2 * nsig * hpxe.diff_xy * hit_zd / units.mm * units.m
+    z_dim   = (2 * nsig * hpxe.diff_z  * hit_zd / units.mm * units.m  \
+               / hpxe.dV  + hpxe.t_el) / tpbox.z_pitch
+    x_dim   = int(round(xy_dist / tpbox.x_pitch + 4))
+    y_dim   = int(round(xy_dist / tpbox.y_pitch + 4))
+
+    return x_dim, y_dim, z_dim
 
 class MiniTrackingPlaneBox:
     """
@@ -185,9 +208,9 @@ class MiniTrackingPlaneBox:
         self.rz_center, self.z_min, self.z_max = find_response_borders(
             p_hit[2], shape[2], self.z_pitch, self.z_absmin, self.z_absmax)
 
-        self.x_pos  = sipm_pos(x_min, x_max, x_pitch)
-        self.y_pos  = sipm_pos(y_min, y_max, y_pitch)
-        self.z_pos  = sipm_pos(z_min, z_max, z_pitch)
+        self.x_pos  = sipm_pos(self.x_min, self.x_max, self.x_pitch)
+        self.y_pos  = sipm_pos(self.y_min, self.y_max, self.y_pitch)
+        self.z_pos  = sipm_pos(self.z_min, self.z_max, self.z_pitch)
         self.P      = (self.x_pos, self.y_pos, self.z_pos)
         self.shape  = shape
         self.resp_h = np.zeros(shape, dtype=np.float32)
