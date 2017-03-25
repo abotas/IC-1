@@ -208,7 +208,6 @@ def test_determine_hrb_size():
 
     assert False
 
-
 def test_HPXeEL_attributes():
     D = HPXeEL()
     energy = np.array([2 * units.keV, 3 * units.keV], dtype=np.float32)
