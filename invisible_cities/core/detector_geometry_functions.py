@@ -125,7 +125,7 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
 
     return r_center, d_min, d_max
 
-def deterimine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
+def determine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
     """
     determine_hrb_size determines the dimensions of the tracking plane box that
     are expected to respond to the photons produced by the ionization e-
@@ -142,12 +142,16 @@ def deterimine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
     returns
     x_dim, y_dim, z_dim: the dimensions of the tpbox expected to respond to hit
     """
-    xy_dist =  2 * nsig * hpxe.diff_xy * hit_zd / units.mm * units.m
-    z_dim   = (2 * nsig * hpxe.diff_z  * hit_zd / units.mm * units.m  \
-               / hpxe.dV  + hpxe.t_el) / tpbox.z_pitch
-    x_dim   = int(round(xy_dist / tpbox.x_pitch + 4))
-    y_dim   = int(round(xy_dist / tpbox.y_pitch + 4))
+    # 2x distance after diffusion to EL of ionization e- nsig sigma from mean
+    xy_dist = 2 * nsig * hpxe.diff_xy * np.sqrt(hit_zd)
+    z_time  = 2 * nsig * hpxe.diff_z  * np.sqrt(hit_zd) / hpxe.dV  + hpxe.t_el
 
+    # Find distances in units of SiPMs or pitch x,y,z pitch
+    # ** This can/should be refined...                      # SiPMs continue to
+    z_dim   = round((z_time  + hpxe.t_el ) / tpbox.z_pitch) # see light for t_el.
+    
+    x_dim   = round((xy_dist + 2*units.cm) / tpbox.x_pitch) # SiPMs respond
+    y_dim   = round((xy_dist + 2*units.cm) / tpbox.y_pitch) # to 2cm away.
     return x_dim, y_dim, z_dim
 
 class MiniTrackingPlaneBox:
