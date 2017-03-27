@@ -144,15 +144,15 @@ def determine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
     """
     # 2x distance after diffusion to EL of ionization e- nsig sigma from mean
     xy_dist = 2 * nsig * hpxe.diff_xy * np.sqrt(hit_zd)
-    z_time  = 2 * nsig * hpxe.diff_z  * np.sqrt(hit_zd) / hpxe.dV  + hpxe.t_el
+    z_time  = 2 * nsig * hpxe.diff_z  * np.sqrt(hit_zd) / hpxe.dV 
 
     # Find distances in units of SiPMs or pitch x,y,z pitch
-    # ** This can/should be refined...                      # SiPMs continue to
-    z_dim   = round((z_time  + hpxe.t_el ) / tpbox.z_pitch) # see light for t_el.
-    
-    x_dim   = round((xy_dist + 2*units.cm) / tpbox.x_pitch) # SiPMs respond
-    y_dim   = round((xy_dist + 2*units.cm) / tpbox.y_pitch) # to 2cm away.
-    return x_dim, y_dim, z_dim
+    # ** This can/should be refined...
+    z_dim   = round((z_time  + hpxe.t_el ) / tpbox.z_pitch) # SiPMs continue to
+                                                            # see light for t_el.
+    x_dim   = round((xy_dist + 4*units.cm) / tpbox.x_pitch) # SiPMs respond from
+    y_dim   = round((xy_dist + 4*units.cm) / tpbox.y_pitch) # to 2cm away on
+    return int(x_dim), int(y_dim), int(z_dim)               # both sides.
 
 class MiniTrackingPlaneBox:
     """
