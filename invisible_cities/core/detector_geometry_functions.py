@@ -144,7 +144,7 @@ def determine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
     """
     # 2x distance after diffusion to EL of ionization e- nsig sigma from mean
     xy_dist = 2 * nsig * hpxe.diff_xy * np.sqrt(hit_zd)
-    z_time  = 2 * nsig * hpxe.diff_z  * np.sqrt(hit_zd) / hpxe.dV 
+    z_time  = 2 * nsig * hpxe.diff_z  * np.sqrt(hit_zd) / hpxe.dV
 
     # Find distances in units of SiPMs or pitch x,y,z pitch
     # ** This can/should be refined...
@@ -234,7 +234,7 @@ class MiniTrackingPlaneBox:
         if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) not an integer')
         if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')
 
-        # compute max indices --non inclusive--
+        # compute max indices --non-inclusive--
         ix_f = ix_s + self.shape[0]
         iy_f = iy_s + self.shape[1]
         iz_f = iz_s + self.shape[2]
@@ -243,7 +243,6 @@ class MiniTrackingPlaneBox:
         [xs, xf, ys, yf, zs, zf] = np.array(np.round(inds),   dtype=np.int32)
 
         self.resp_ev[xs: xf, ys: yf, zs: zf] += self.resp_h
-
         return -1
 
     def clear_event_response(self):

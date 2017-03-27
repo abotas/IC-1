@@ -250,18 +250,39 @@ def test_mini_tracking_plane_box_helper_find_response_borders_oddd_dim():
 
 def test_mini_tracking_plane_box_add_hit_resp_to_event_resp():
     mini_box_dims = (8,8,4)
+    tp  = 10 * units.mm
+    zp  =  2 * units.mus
+    tpbox = TrackingPlaneBox(x_pitch=tp, y_pitch=tp, z_pitch=zp)
+    rb  = MiniTrackingPlaneBox(tpbox)
+
+    # test for a few different hits
     for x,y,z in [[-235*units.mm, -235*units.mm,   0*units.mus],
                   [   0*units.mm,    0*units.mm,  50*units.mus],
                   [ 235*units.mm,  235*units.mm, 530*units.mus]]:
-        tp   = 10 * units.mm
-        zp   =  2 * units.mus
-        tpb  = TrackingPlaneBox(x_pitch=tp, y_pitch=tp, z_pitch=zp)
-        rb   = MiniTrackingPlaneBox(tpb)
+
         rb.center([x,y,z], mini_box_dims)
-        inds = rb.situate(tpb)
-        assert (rb.x_pos == tpb.x_pos[inds[0]: inds[1]]).all()
-        assert (rb.y_pos == tpb.y_pos[inds[2]: inds[3]]).all()
-        assert (rb.z_pos == tpb.z_pos[inds[4]: inds[5]]).all()
+        rb.resp_h = np.random.normal(size=(8,8,4))
+        rb.add_hit_resp_to_event_resp()
+
+        ixs = int(round((rb.x_min - tpbox.x_min) / rb.x_pitch))
+        iys = int(round((rb.y_min - tpbox.y_min) / rb.y_pitch))
+        izs = int(round((rb.z_min - tpbox.z_min) / rb.z_pitch))
+
+        # check correct resp added to correct positions
+        for i in range(mini_box_dims[0]):
+            for j in range(mini_box_dims[1]):
+                for k in range(mini_box_dims[2]):
+                    assert (rb.x_pos[i],
+                            rb.y_pos[j],
+                            rb.z_pos[k]) == \
+                            (tpbox.x_pos[ixs+i],
+                             tpbox.y_pos[iys+j],
+                             tpbox.z_pos[izs+k])
+                    assert np.isclose(rb.resp_ev[i+ixs, j+iys, k+izs],
+                                      rb.resp_h [i,     j,     k])
+
+                    rb.resp_ev[i+ixs, j+iys, k+izs] = 0
+        assert (rb.resp_ev == np.zeros_like(rb.resp_ev)).all()
 
 def test_distribute_gain_3mus():
     z   = 5.3 * units.mus
