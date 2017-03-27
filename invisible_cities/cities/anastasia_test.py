@@ -17,7 +17,8 @@ from invisible_cities.core.detector_response_functions import \
      HPXeEL
 
 from invisible_cities.core.detector_geometry_functions import Box, \
-     TrackingPlaneBox, MiniTrackingPlaneBox, find_response_borders
+     TrackingPlaneBox, MiniTrackingPlaneBox, find_response_borders,\
+     determine_hrb_size
 
 from invisible_cities.core.configure         import configure
 from invisible_cities.cities.anastasia       import Anastasia, ANASTASIA
@@ -52,7 +53,6 @@ t_el {t_el}
 t {t}
 d {d}
 """
-
 
 def config_file_spec_with_tmpdir(tmpdir):
     return dict(PATH_IN  = '$ICDIR/database/test_data/',
@@ -202,11 +202,14 @@ def test_determine_hrb_size():
                              y_pitch = 10 * units.mm,
                              z_pitch =  2 * units.mus)
 
-    print(determine_hrb_size(100, hpxe, tpbox, nsig=3))
-    print(determine_hrb_size(500, hpxe, tpbox, nsig=3))
-    print(determine_hrb_size(500, hpxe, tpbox, nsig=1))
+    nsig = 2.3
+    zd = 155.1*units.mm
+    xy_dim = 2 * (nsig * hpxe.diff_xy * np.sqrt(zd) + 2*units.cm) / tpbox.x_pitch
+    z_dim = (2 *  nsig * hpxe.diff_z  * np.sqrt(zd) / hpxe.dV \
+               +  hpxe.t_el) / tpbox.z_pitch
 
-    assert False
+    shape1 = determine_hrb_size(zd, hpxe, tpbox, nsig=nsig)
+    assert shape1 == (int(round(xy_dim)), int(round(xy_dim)), int(round(z_dim)))
 
 def test_HPXeEL_attributes():
     D = HPXeEL()
