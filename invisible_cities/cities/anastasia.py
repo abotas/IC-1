@@ -90,10 +90,12 @@ class Anastasia(DetectorResponseCity):
                         # electrons_h[e-] = [x, y, EL arrival time] (after diff)
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
-                        # TODO: pass hit zd-
-                        hrb_shape = determine_hrb_size(hits_ev[hit, 2], self.hpxe, self.tpbox, nsig=3)
+
                         # Center a hrb of size hrb_shape around the center of
                         # where the hit should reach the EL (z=time).
+                        hrb_shape = determine_hrb_size(hits_ev[hit, 2], self.hpxe, self.tpbox, nsig=3)
+
+                        # TODO make this less ugly
                         self.hrb.center((*hits_ev[hit,:2], hits_ev[hit, 2] / self.hpxe.dV),
                             hrb_shape)
                         # TODO: Change size of window from hit to hit depending
