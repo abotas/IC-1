@@ -23,7 +23,7 @@ from invisible_cities.core.detector_response_functions import HPXeEL,  \
      compute_photon_emmission_boundaries, \
      SiPM_response
 from invisible_cities.core.detector_geometry_functions import TrackingPlaneBox, \
-     MiniTrackingPlaneBox
+     MiniTrackingPlaneBox, determine_hrb_size
 from invisible_cities.core.system_of_units_c           import units
 
 
@@ -90,14 +90,11 @@ class Anastasia(DetectorResponseCity):
                         # electrons_h[e-] = [x, y, EL arrival time] (after diff)
                         electrons_h = diffuse_electrons(electrons_h, self.hpxe)
 
-
-
-                        hrb_shape = deterimine_hrb_size(hit, hpxe)
-                        hrb_shape = (8,8,4)
+                        # TODO: pass hit zd-
+                        hrb_shape = determine_hrb_size(hits_ev[hit, 2], self.hpxe, self.tpbox, nsig=3)
                         # Center a hrb of size hrb_shape around the center of
                         # where the hit should reach the EL (z=time).
-                        self.hrb.center(
-                            (*hits_ev[hit,:2], hits_ev[hit, 2] / self.hpxe.dV),
+                        self.hrb.center((*hits_ev[hit,:2], hits_ev[hit, 2] / self.hpxe.dV),
                             hrb_shape)
                         # TODO: Change size of window from hit to hit depending
                         # on z position of hit? (amount of diffusion possible)
@@ -141,29 +138,30 @@ class Anastasia(DetectorResponseCity):
 def ANASTASIA(argv=sys.argv):
 
     conf = configure(argv)
-    A = Anastasia(glob(conf['FILE_IN']), file_out = conf['FILE_OUT'],
-        hpxe = HPXeEL(dV      = conf['dV']     * units.mm/units.mus,
-                      d       = conf['d']      * units.mm,
-                      t       = conf['t']      * units.mm,
-                      t_el    = conf['t_el']   * units.mus,
-                      Wi      = conf['Wi']     * units.eV,
-                      rf      = conf['rf']     ,
-                      ie_fano = conf['ie_fano'],
-                      g_fano  = conf['g_fano'] ,
-                      diff_xy = conf['diff_xy'] * units.mm/np.sqrt(units.m) ,
-                      diff_z  = conf['diff_z']  * units.mm/np.sqrt(units.m)),
-        tpbox = TrackingPlaneBox(
-                      x_min   = conf['x_min']   * units.mm  ,
-                      x_max   = conf['x_max']   * units.mm  ,
-                      y_min   = conf['y_min']   * units.mm  ,
-                      y_max   = conf['y_max']   * units.mm  ,
-                      z_min   = conf['z_min']   * units.mus ,
-                      z_max   = conf['z_max']   * units.mus ,
-                      x_pitch = conf['x_pitch'] * units.mm  ,
-                      y_pitch = conf['y_pitch'] * units.mm  ,
-                      z_pitch = conf['z_pitch'] * units.mus),
 
-        NEVENTS  =  conf['NEVENTS'])
+
+    A = Anastasia(glob(conf.FILE_IN), file_out = conf.FILE_OUT,
+        hpxe = HPXeEL(dV      = conf.dV     * units.mm/units.mus,
+                      d       = conf.d      * units.mm,
+                      t       = conf.t      * units.mm,
+                      t_el    = conf.t_el   * units.mus,
+                      Wi      = conf.Wi     * units.eV,
+                      rf      = conf.rf     ,
+                      ie_fano = conf.ie_fano,
+                      g_fano  = conf.g_fano ,
+                      diff_xy = conf.diff_xy * units.mm/np.sqrt(units.m) ,
+                      diff_z  = conf.diff_z  * units.mm/np.sqrt(units.m)),
+        tpbox = TrackingPlaneBox(
+                      x_min   = conf.x_min   * units.mm  ,
+                      x_max   = conf.x_max   * units.mm  ,
+                      y_min   = conf.y_min   * units.mm  ,
+                      y_max   = conf.y_max   * units.mm  ,
+                      z_min   = conf.z_min   * units.mus ,
+                      z_max   = conf.z_max   * units.mus ,
+                      x_pitch = conf.x_pitch * units.mm  ,
+                      y_pitch = conf.y_pitch * units.mm  ,
+                      z_pitch = conf.z_pitch * units.mus),
+        NEVENTS  =  conf.NEVENTS)
 
     t0 = time(); A.run(); t1 = time();
     dt = t1 - t0
