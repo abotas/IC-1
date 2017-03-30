@@ -99,7 +99,7 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
     d_min: the minimum border of the MiniTPB in this dim
     d_max: the maximum border of the MiniTPB in this dim
     """
-    if   dim <= 0: raise ValueError('dimension size must be greater than 0')
+    if dim <= 0: raise ValueError('dimension size must be greater than 0')
 
     # even, center box around position between two SiPMs
     elif dim % 2 == 0:
@@ -152,7 +152,7 @@ def determine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
                                                             # see light for t_el.
     x_dim   = round((xy_dist + 4*units.cm) / tpbox.x_pitch) # SiPMs respond from
     y_dim   = round((xy_dist + 4*units.cm) / tpbox.y_pitch) # to 2cm away on
-    return int(x_dim), int(y_dim), int(z_dim)               # both sides.
+    return int(max(1,x_dim)), int(max(1,y_dim)), int(max(1,z_dim)) # both sides.
 
 class MiniTrackingPlaneBox:
     """
