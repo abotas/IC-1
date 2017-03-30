@@ -93,14 +93,15 @@ class Anastasia(DetectorResponseCity):
 
                         # Center a hrb of size hrb_shape around the center of
                         # where the hit should reach the EL (z=time).
+                        # here we determine hrb_shape based on distance to the
+                        # EL of the hit.
                         hrb_shape = determine_hrb_size(hits_ev[hit, 2],
                                                        self.hpxe,
                                                        self.tpbox,
                                                        nsig=3)
-
-                        # TODO make this less ugly
                         hit_at_el     = hits_ev[hit, :3]
-                        hit_at_el[3] /= self.hpxe.dV
+                        hit_at_el[2] /= self.hpxe.dV
+                        # Center the hrb around the position of the hit_at_el
                         self.hrb.center(hit_at_el, hrb_shape)
 
                         # Determine fraction of gain from each ionization e-
