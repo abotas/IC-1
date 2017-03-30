@@ -103,22 +103,25 @@ def test_prob_SiPM_photon_detection():
     ** MUST UPDATE IF P(detection) CHANGED! **
     """
 
-    # Sample electron/window
-    E = np.array([[3, 41, 0]])
-    xpos = np.array(range(5))*10 + 5
+    E = np.array([[3, 41, 0]]) # Sample electron
+    xpos = np.array(range(5))*10 + 5 # SiPM Sample map positions
     ypos = np.array(range(5))*10 + 5
-    gain = 1.0
-    xydim = len(xpos)
-    t = 5; d = 5
+
+    # initialized map
     m = np.zeros((len(xpos), len(ypos)), dtype=np.float32)
+
+    # set tpbox and params
     tpb = TrackingPlaneBox(x_min=xpos[0], x_max=xpos[-1],
                            y_min=ypos[0], y_max=ypos[-1])
-    tpb.shape = (xydim, xydim, 4)
+    tpb.shape = (len(xpos), len(ypos), 4)
+    t = 5
+    d = 5
+    gain = 1.0
 
-    # Get map
+    # Get SiPM responses from function
     for e in E: m += prob_SiPM_photon_detection(tpb, e, [t + d, d]) * gain
 
-    # Check equality
+    # Check SiPM responses equality
     for row, x in zip(m, xpos):
         for resp, y in zip(row, ypos):
 
@@ -134,24 +137,19 @@ def test_prob_SiPM_photon_detection():
 def test_gather_correct_number_of_hits():
     fp     = expandvars('$ICDIR/database/test_data/NEW_se_mc_1evt.h5')
     Events = gather_montecarlo_hits(fp)
-    f      = tb.open_file(fp, 'r')
-    ptab   = f.root.MC.MCTracks
-    assert ptab.nrows == len(Events[ptab[0]['event_indx']])
-    f.close()
+    with tb.open_file(fp, 'r') as f:
+        ptab   = f.root.MC.MCTracks
+        assert ptab.nrows == len(Events[ptab[0]['event_indx']])
 
 def test_correct_number_of_ionization_electrons_generated():
     hE1 = 100 * units.eV
     hE2 =  31 * units.eV
-    hits = pd.DataFrame(
-        data = np.array([[1, 2, 3, hE1],
-                         [4, 5, 6, hE2]], dtype=np.float32))
-
-    Wi = 10 * units.eV
+    hits = np.array([[1, 2, 3, hE1], [4, 5, 6, hE2]], dtype=np.float32)
     hpxe = HPXeEL(Wi=10*units.eV, ie_fano=0)
-    H = generate_ionization_electrons(hits.values, hpxe)
-    assert len(H)    ==  len(hits.values)
-    assert len(H[0]) ==  round(hE1 / Wi)
-    assert len(H[1]) ==  round(hE2 / Wi)
+    H = generate_ionization_electrons(hits, hpxe)
+    assert len(H)    ==  len(hits)
+    assert len(H[0]) ==  round(hE1 / hpxe.Wi * hpxe.rf)
+    assert len(H[1]) ==  round(hE2 / hpxe.Wi * hpxe.rf)
 
 def test_correct_diffuse_electrons_time_coordinate():
     dV      = 1.11 * units.mm / units.mus
@@ -195,20 +193,23 @@ def test_tracking_plane_box_positons():
     assert(P[2] == np.linspace(z_min, z_max, b.length_z() / b.z_pitch + 1)).all()
 
 def test_determine_hrb_size():
+    # initialize necessary determine_hrb_size params
     hpxe  = HPXeEL(dV      =  1 * units.mm/units.mus,
                    diff_xy = 10 * units.mm/np.sqrt(units.m),
                    diff_z  =  3 * units.mm/np.sqrt(units.m))
     tpbox = TrackingPlaneBox(x_pitch = 10 * units.mm,
                              y_pitch = 10 * units.mm,
                              z_pitch =  2 * units.mus)
-
     nsig = 2.3
     zd = 155.1*units.mm
+
+    # get shape form determine_hrb_size
+    shape1 = determine_hrb_size(zd, hpxe, tpbox, nsig=nsig)
+
+    # check
     xy_dim = 2 * (nsig * hpxe.diff_xy * np.sqrt(zd) + 2*units.cm) / tpbox.x_pitch
     z_dim = (2 *  nsig * hpxe.diff_z  * np.sqrt(zd) / hpxe.dV \
                +  hpxe.t_el) / tpbox.z_pitch
-
-    shape1 = determine_hrb_size(zd, hpxe, tpbox, nsig=nsig)
     assert shape1 == (int(round(xy_dim)), int(round(xy_dim)), int(round(z_dim)))
 
 def test_HPXeEL_attributes():
@@ -285,16 +286,23 @@ def test_mini_tracking_plane_box_add_hit_resp_to_event_resp():
         assert (rb.resp_ev == np.zeros_like(rb.resp_ev)).all()
 
 def test_distribute_gain_3mus():
+    # set up params for distribute_gain
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox(tpbox)
     b0.center([0,0,5.5*units.mus], (5,5,5))
+
+    # get fraction of gain ndarray from distribute gain
     FG  = distribute_gain(E, EL, b0)
+
+    # compute what the gain fraction should be in the different time bins
     gf1 = (b0.z_pos[1] + b0.z_pitch - z) / EL.t_el
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
+
+    # check for equality
     assert np.allclose(FG[0, 0], 0)
     assert np.allclose(FG[0, 1], gf1)
     assert np.allclose(FG[0, 2], gf2)
@@ -302,15 +310,22 @@ def test_distribute_gain_3mus():
     assert np.allclose(FG[0, 4], 0)
 
 def test_distribute_gain_2mus():
+    # set up params for distribute gain
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=2*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox(tpbox)
     b0.center([0, 0, 5.5*units.mus], (5,5,5))
+
+    # get gain fraction from distribute_gain
     FG  = distribute_gain(E, EL, b0)
+
+    # compute what fraction of gain should go to which time bins
     gf1 = min((b0.z_pos[1] + b0.z_pitch - z) / EL.t_el, 1)
     gf2 = 1-gf1
+
+    #check equality
     assert np.allclose(FG[0, 0], 0)
     assert np.allclose(FG[0, 1], gf1)
     assert np.allclose(FG[0, 2], gf2)
@@ -318,13 +333,17 @@ def test_distribute_gain_2mus():
     assert np.allclose(FG[0, 4], 0)
 
 def test_distribute_gain_noELt():
+    # set up params for distribute_gain
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=.01*units.mus)
     tpbox = TrackingPlaneBox(z_pitch=2*units.mus)
     b0  = MiniTrackingPlaneBox(tpbox)
     b0.center([0, 0, 5.5*units.mus], (5,5,5))
+
+    # get fraction of gain in each time bin from distribute_gain
     FG  = distribute_gain(E, EL, b0)
+
     assert np.allclose(FG[0, 0], 0)
     assert np.allclose(FG[0, 1], 1)
     assert np.allclose(FG[0, 2], 0)
@@ -338,6 +357,7 @@ def test_distribute_photons():
                        (FG * hpxe.Ng / hpxe.rf).round())
 
 def test_photon_emmission_z_boundaries():
+    # set up params for compute_photon_emmission_boundaries
     z   = 5.3 * units.mus
     E   = np.array([[0, 0, z]], dtype=np.float32)
     EL  = HPXeEL(ie_fano=0, g_fano=0, t_el=3*units.mus)
@@ -348,11 +368,17 @@ def test_photon_emmission_z_boundaries():
     gf2 =  b0.z_pitch                    / EL.t_el
     gf3 = 1 - gf1 - gf2
     FG  = np.array([[0, gf1, gf2, gf3, 0]])
+
+    # get integration boundaries from compute_photon_emmission_boundaries
     IB  = compute_photon_emmission_boundaries(FG, EL)
+
+    # calculate what IB should be for each time bin
     ib0 = np.array([EL.d + EL.t, EL.d + EL.t],    dtype=np.float32)
     ib1 = np.array([ib0[0], ib0[1] - gf1 * EL.d], dtype=np.float32)
     ib2 = np.array([ib1[1], ib1[1] - gf2 * EL.d], dtype=np.float32)
     ib3 = np.array([ib2[1], ib2[1] - gf3 * EL.d], dtype=np.float32)
+
+    # check equality
     assert np.allclose(IB[0, 0], ib0)
     assert np.allclose(IB[0, 1], ib1)
     assert np.allclose(IB[0, 2], ib2)
