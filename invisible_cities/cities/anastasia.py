@@ -93,13 +93,15 @@ class Anastasia(DetectorResponseCity):
 
                         # Center a hrb of size hrb_shape around the center of
                         # where the hit should reach the EL (z=time).
-                        hrb_shape = determine_hrb_size(hits_ev[hit, 2], self.hpxe, self.tpbox, nsig=3)
+                        hrb_shape = determine_hrb_size(hits_ev[hit, 2],
+                                                       self.hpxe,
+                                                       self.tpbox,
+                                                       nsig=3)
 
                         # TODO make this less ugly
-                        self.hrb.center((*hits_ev[hit,:2], hits_ev[hit, 2] / self.hpxe.dV),
-                            hrb_shape)
-                        # TODO: Change size of window from hit to hit depending
-                        # on z position of hit? (amount of diffusion possible)
+                        hit_at_el     = hits_ev[hit, :3]
+                        hit_at_el[3] /= self.hpxe.dV
+                        self.hrb.center(hit_at_el, hrb_shape)
 
                         # Determine fraction of gain from each ionization e-
                         # to be recieved by each time bin as e- crossing EL
@@ -118,8 +120,10 @@ class Anastasia(DetectorResponseCity):
 
                         # Get cumulative response of all SiPMs within hrb to all
                         # the photons produced by electrons_h traveling thru EL
-                        self.hrb.resp_h = SiPM_response(
-                            electrons_h, photons, IB, self.hrb)
+                        self.hrb.resp_h = SiPM_response(electrons_h,
+                                                        photons,
+                                                        IB,
+                                                        self.hrb)
 
                         # Add SiPM response to this hit, to the SiPM response
                         # of the entire event
@@ -173,6 +177,3 @@ def ANASTASIA(argv=sys.argv):
 
 if __name__ == "__main__":
     ANASTASIA(sys.argv)
-
-
-#conf = read_config_file('/Users/alej/Desktop/Valencia/nextic/IC-1/invisible_cities/config/anastasia.conf')
