@@ -173,7 +173,7 @@ def diffuse_electrons(electrons, hpxe):
                positions and diffused_electrons[:, 2] is in units of time
     """
     diffused_electrons = np.copy(electrons) # TODO time profile
-    sd = np.sqrt(electrons[:, 2] / units.mm * units.m)  # sqrt dist from EL grid
+    sd = np.sqrt(electrons[:, 2])           # sqrt dist from EL grid (mm)
 
     # mu=0, sig=lat_diff * sqrt(m)
     # TODO make sure sigma is correct
