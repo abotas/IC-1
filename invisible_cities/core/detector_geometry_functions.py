@@ -1,7 +1,10 @@
 
 import numpy as np
-from   invisible_cities.core.system_of_units_c import units
-
+from invisible_cities.core.system_of_units_c import units
+from invisible_cities.core.exceptions        import MinGreaterThanMax, \
+                                                    NegativeTime,      \
+                                                    InvalidPitch,      \
+                                                    InvalidDimension
 class Box:
 
     def __init__(self,
@@ -15,7 +18,7 @@ class Box:
        Defines a Box
        """
         if x_min > x_max or y_min > y_max or z_min > z_max:
-            raise ValueError('x,y,or z min > max!')
+            raise MinGreaterThanMax('d_min > d_max!')
 
         self.x_min = x_min
         self.x_max = x_max
@@ -64,13 +67,13 @@ class TrackingPlaneBox(Box):
                            y_max=y_max, z_min=z_min, z_max=z_max)
 
         if z_min < 0:
-            raise ValueError('time must be positive')
+            raise NegativeTime('z_min (time) must be greater than 0')
         if x_pitch <= 0 or y_pitch <= 0 or z_pitch <=0:
-            raise ValueError('pitches must be positive')
+            raise InvalidPitch('Pitch must be positive')
         if ((x_max - x_min) % x_pitch != 0 or
             (y_max - y_min) % y_pitch != 0 or
             (z_max - z_min) % z_pitch != 0):
-            raise ValueError('max - min not divisible by pitch')
+            raise InvalidPitch('max - min not divisible by SiPM pitch')
 
         self.x_pitch = x_pitch
         self.y_pitch = y_pitch
@@ -99,7 +102,7 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
     d_min: the minimum border of the MiniTPB in this dim
     d_max: the maximum border of the MiniTPB in this dim
     """
-    if dim <= 0: raise ValueError('dimension size must be greater than 0')
+    if dim <= 0: raise InvalidDimension('Dimension must be positive')
 
     # even, center box around position between two SiPMs
     elif dim % 2 == 0:
@@ -113,7 +116,7 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
         d_min    = r_center - ((dim - 1) / 2.0 * pitch)
         d_max    = r_center + ((dim - 1) / 2.0 * pitch)
 
-    else: raise ValueError('x,y,z_dim must be whole number')
+    else: raise InvalidDimension('Dimension must be a whole number')
 
     # ensure within full sized TrackingPlaneBox
     if d_min < absmin:
@@ -199,11 +202,11 @@ class MiniTrackingPlaneBox:
         """
 
         if shape[0] * self.x_pitch + self.x_absmin > self.x_absmax:
-            raise ValueError('xdim too large')
+            raise InvalidDimension('x_dim too large')
         if shape[1] * self.y_pitch + self.y_absmin > self.y_absmax:
-            raise ValueError('ydim too large')
+            raise InvalidDimension('y_dim too large')
         if shape[2] * self.z_pitch + self.z_absmin > self.z_absmax:
-            raise ValueError('zdim too large')
+            raise InvalidDimension('z_dim too large')
 
         self.rx_center, self.x_min, self.x_max = find_response_borders(
             p_hit[0], shape[0], self.x_pitch, self.x_absmin, self.x_absmax)
@@ -230,9 +233,9 @@ class MiniTrackingPlaneBox:
         ix_s = (self.x_min - self.x_absmin) / self.x_pitch
         iy_s = (self.y_min - self.y_absmin) / self.y_pitch
         iz_s = (self.z_min - self.z_absmin) / self.z_pitch
-        if not np.isclose(ix_s % 1, 0): raise ValueError('ix_s (indx) not an integer')
-        if not np.isclose(iy_s % 1, 0): raise ValueError('iy_s (indx) not an integer')
-        if not np.isclose(iz_s % 1, 0): raise ValueError('iz_s (indx) not an integer')
+        if not np.isclose(ix_s % 1, 0): raise IndexError('ix_s (indx) not an integer')
+        if not np.isclose(iy_s % 1, 0): raise IndexError('iy_s (indx) not an integer')
+        if not np.isclose(iz_s % 1, 0): raise IndexError('iz_s (indx) not an integer')
 
         # compute max indices --non-inclusive--
         ix_f = ix_s + self.shape[0]

@@ -15,3 +15,15 @@ class NoOutputFile(ICException):
 
 class ParameterNotSet(ICException):
     pass
+
+class MinGreaterThanMax(ICException):
+    pass
+
+class NegativeTime(ICException):
+    pass
+
+class InvalidPitch(ICException):
+    pass
+
+class InvalidDimension(ICException):
+    pass
