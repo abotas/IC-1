@@ -363,7 +363,7 @@ def compute_photon_emmission_boundaries(FG, hpxe):
     """
 
     # Initializing I
-    IB = np.zeros((*FG.shape, 2), dtype=np.float32) + (hpxe.d + hpxe.t)
+    IB = np.zeros((FG.shape[0], FG.shape[1], 2), dtype=np.float32) + (hpxe.d + hpxe.t)
 
     IB[:, 0, 1] -= FG[:, 0] * hpxe.d
     for i in range(1, FG.shape[1]):
