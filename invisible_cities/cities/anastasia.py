@@ -56,7 +56,9 @@ class Anastasia(DetectorResponseCity):
             SiPM_resp = f_out.create_earray(f_out.root,
                         atom  = tb.Float32Atom(),
                         name  = 'SiPM_resp',
-                        shape = (0, *self.tpbox.shape),
+                        shape = (0, self.tpbox.shape[0],
+                                    self.tpbox.shape[1],
+                                    self.tpbox.shape[2]),
                         expectedrows = self.NEVENTS,
                         filters = tbl.filters(self.compression))
 
