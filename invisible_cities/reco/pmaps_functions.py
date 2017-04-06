@@ -55,7 +55,7 @@ def scan_s12(S12):
     for i in S12.keys():
         print('S12 number = {}, samples = {} sum in pes ={}'
               .format(i, len(S12[i][0]), np.sum(S12[i][1])))
-        
+
 
 def plot_s12(S12, figsize=(6,6)):
     """Plot the peaks of input S12.
@@ -113,3 +113,19 @@ def scan_s2si_map(S2Si):
         for nsipm, E in sipm.items():
             ene = np.sum(E)
             print('SiPM number = {}, total energy = {}'.format(nsipm, ene))
+
+
+def width(times, to_mus=False):
+    """
+    Compute peak width.
+    """
+    w = (np.max(times) - np.min(times)) if np.any(times) else 0.
+    return w * units.ns/units.mus if to_mus else w
+
+
+def integrate_charge(d):
+    """
+    Integrate charge from a SiPM dictionary.
+    """
+    newd = dict((key, np.sum(value)) for key, value in d.items())
+    return map(np.array, list(zip(*newd.items())))
