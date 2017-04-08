@@ -104,13 +104,13 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
     """
     if dim <= 0: raise InvalidDimension('Dimension must be positive')
 
-    # even, center box around position between two SiPMs
+    # even, center box around position (r_center) between two SiPMs
     elif dim % 2 == 0:
         r_center = absmin + np.floor((center - absmin) / pitch) * pitch + pitch / 2.0
         d_min    = r_center - (dim / 2.0 * pitch - pitch / 2.0)
         d_max    = r_center + (dim / 2.0 * pitch - pitch / 2.0)
 
-    # odd, center box around SiPM
+    # odd, center box around an central SiPM (r_center)
     elif dim % 2 == 1:
         r_center = absmin + round((center - absmin) / pitch) * pitch
         d_min    = r_center - ((dim - 1) / 2.0 * pitch)
@@ -121,10 +121,14 @@ def find_response_borders(center, dim, pitch, absmin, absmax):
     # ensure within full sized TrackingPlaneBox
     if d_min < absmin:
         shift  = absmin - d_min
-        d_min += shift; d_max += shift; r_center += shift
+        d_min    += shift
+        d_max    += shift
+        r_center += shift
     elif d_max > absmax:
         shift  = d_max - absmax
-        d_min -= shift; d_max -= shift; r_center -= shift
+        d_min    -= shift
+        d_max    -= shift
+        r_center -= shift
 
     return r_center, d_min, d_max
 
@@ -151,10 +155,10 @@ def determine_hrb_size(hit_zd, hpxe, tpbox, nsig=3):
 
     # Find distances in units of SiPMs or pitch x,y,z pitch
     # ** This can/should be refined...
-    z_dim   = round((z_time  + hpxe.t_el ) / tpbox.z_pitch) # SiPMs continue to
+    z_dim   = np.ceil((z_time  + hpxe.t_el ) / tpbox.z_pitch) # SiPMs continue to
                                                             # see light for t_el.
-    x_dim   = round((xy_dist + 4*units.cm) / tpbox.x_pitch) # SiPMs respond from
-    y_dim   = round((xy_dist + 4*units.cm) / tpbox.y_pitch) # to 2cm away on
+    x_dim   = np.ceil((xy_dist + 4*units.cm) / tpbox.x_pitch) # SiPMs respond from
+    y_dim   = np.ceil((xy_dist + 4*units.cm) / tpbox.y_pitch) # to 2cm away on
     return int(max(1,x_dim)), int(max(1,y_dim)), int(max(1,z_dim)) # both sides.
 
 class MiniTrackingPlaneBox:
@@ -230,22 +234,16 @@ class MiniTrackingPlaneBox:
         """
 
         # Compute min indices
-        ix_s = (self.x_min - self.x_absmin) / self.x_pitch
-        iy_s = (self.y_min - self.y_absmin) / self.y_pitch
-        iz_s = (self.z_min - self.z_absmin) / self.z_pitch
-        if not np.isclose(ix_s % 1, 0): raise IndexError('ix_s (indx) not an integer')
-        if not np.isclose(iy_s % 1, 0): raise IndexError('iy_s (indx) not an integer')
-        if not np.isclose(iz_s % 1, 0): raise IndexError('iz_s (indx) not an integer')
+        ix_s = int(round((self.x_min - self.x_absmin) / self.x_pitch))
+        iy_s = int(round((self.y_min - self.y_absmin) / self.y_pitch))
+        iz_s = int(round((self.z_min - self.z_absmin) / self.z_pitch))
 
         # compute max indices --non-inclusive--
         ix_f = ix_s + self.shape[0]
         iy_f = iy_s + self.shape[1]
         iz_f = iz_s + self.shape[2]
 
-        inds = np.array([ix_s, ix_f, iy_s, iy_f, iz_s, iz_f], dtype=np.float32)
-        [xs, xf, ys, yf, zs, zf] = np.array(np.round(inds),   dtype=np.int32)
-
-        self.resp_ev[xs: xf, ys: yf, zs: zf] += self.resp_h
+        self.resp_ev[ix_s: ix_f, iy_s: iy_f, iz_s: iz_f] += self.resp_h
         return -1
 
     def clear_event_response(self):
