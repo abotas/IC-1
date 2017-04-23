@@ -24,10 +24,11 @@ def barycenter(xs, ys, qs, default=np.nan):
     return [c]
 
 
-def corona(xs, ys, qs, rmax=30*units.mm, T=3.5*units.pes):
+def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
     """
     rmax is the maximum radius of a cluster
-    T is the threshold for local maxima (this kwarg may be unnecessary)
+    T is the threshold for local maxima (kwarg may be unnecessary)
+
 
     returns a list of Clusters
     """
@@ -45,8 +46,11 @@ def corona(xs, ys, qs, rmax=30*units.mm, T=3.5*units.pes):
         dists = np.sqrt((xs - xs[i_max]) ** 2 + (ys - ys[i_max]) ** 2)
         cluster = np.where(dists < rmax)[0]
 
-        # get barycenter of this cluster
-        c.append(barycenter(xs[cluster], ys[cluster], qs[cluster]))
+        # only append c if number of responsive SiPMS at least msipm
+        if len(cluster) >= msipm:
+            # get barycenter of this cluster
+            c.append(*barycenter(xs[cluster], ys[cluster], qs[cluster]))
+            
 
         xs = np.delete(xs, cluster) # delete the SiPMs
         ys = np.delete(ys, cluster) # contributing to
