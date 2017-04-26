@@ -32,10 +32,8 @@ def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
 
     returns a list of Clusters
     """
-    c = []
-    xs = np.copy(xs)
-    ys = np.copy(ys)
-    qs = np.copy(qs)
+    c  = []
+    qs = np.array(qs) # This not a np array
 
     # While there are more local maxima
     while len(qs) > 0:
@@ -50,7 +48,6 @@ def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
         if len(cluster) >= msipm:
             # get barycenter of this cluster
             c.append(*barycenter(xs[cluster], ys[cluster], qs[cluster]))
-            
 
         xs = np.delete(xs, cluster) # delete the SiPMs
         ys = np.delete(ys, cluster) # contributing to
