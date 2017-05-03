@@ -56,7 +56,7 @@ def corona_old(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
     return c
 
 
-def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3, lms=15*units.mm):
+def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
     """
     rmax is the maximum radius of a cluster
     T is the threshold for local maxima (kwarg may be unnecessary)
@@ -64,6 +64,7 @@ def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3, lms=15*units.
 
     returns a list of Clusters
     """
+    lms= 15*units.mm
     c  = []
     qs = np.array(qs) # This not a np array
 
