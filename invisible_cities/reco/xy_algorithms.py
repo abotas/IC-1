@@ -24,7 +24,7 @@ def barycenter(xs, ys, qs, default=np.nan):
     return [c]
 
 
-def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
+def corona_old(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
     """
     rmax is the maximum radius of a cluster
     T is the threshold for local maxima (kwarg may be unnecessary)
@@ -42,6 +42,45 @@ def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3):
 
         # get SiPMs within rmax of SiPM with largest Q
         dists = np.sqrt((xs - xs[i_max]) ** 2 + (ys - ys[i_max]) ** 2)
+        cluster = np.where(dists < rmax)[0]
+
+        # only append c if number of responsive SiPMS at least msipm
+        if len(cluster) >= msipm:
+            # get barycenter of this cluster
+            c.append(*barycenter(xs[cluster], ys[cluster], qs[cluster]))
+
+        xs = np.delete(xs, cluster) # delete the SiPMs
+        ys = np.delete(ys, cluster) # contributing to
+        qs = np.delete(qs, cluster) # this cluster
+
+    return c
+
+
+def corona(xs, ys, qs, rmax=25*units.mm, T=3.5*units.pes, msipm=3, lms=15*units.mm):
+    """
+    rmax is the maximum radius of a cluster
+    T is the threshold for local maxima (kwarg may be unnecessary)
+    lms is the local max search distance from the maximum SiPM
+
+    returns a list of Clusters
+    """
+    c  = []
+    qs = np.array(qs) # This not a np array
+
+    # While there are more local maxima
+    while len(qs) > 0:
+        i_max = np.argmax(qs)    # SiPM with largest Q
+        if qs[i_max] < T: break  # largest Q remaining is negligible
+
+        # find local max
+        dists = np.sqrt((xs - xs[i_max]) ** 2 + (ys - ys[i_max]) ** 2)
+        local_max = np.where(dists < lms)[0]
+        lm_bc     = barycenter(xs[local_max], ys[local_max], qs[local_max])[0]
+        xp        = lm_bc.X
+        yp        = lm_bc.Y
+
+        # find cluster
+        dists = np.sqrt((xs - xp) ** 2 + (ys - yp) ** 2)
         cluster = np.where(dists < rmax)[0]
 
         # only append c if number of responsive SiPMS at least msipm
