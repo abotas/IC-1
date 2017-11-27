@@ -264,3 +264,27 @@ def test_Peak_raises_exception_when_shapes_dont_match(PK, sr1, sr2):
         _         , sr2 = sr2
         n_samples       = wfs.shape[1]
         pk = PK(np.empty(n_samples + 1), sr1, sr2)
+
+
+@given(pmaps())
+def test_PMap_s1s(pmps):
+    (s1s, _), pmp = pmps
+    assert pmp.s1s == s1s
+
+
+@given(pmaps())
+def test_PMap_s2s(pmps):
+    (_, s2s), pmp = pmps
+    assert pmp.s2s == s2s
+
+
+@given(pmaps())
+def test_PMap_number_of_s1s(pmps):
+    (s1s, _), pmp = pmps
+    assert pmp.number_of_s1s == len(s1s)
+
+
+@given(pmaps())
+def test_PMap_number_of_s2s(pmps):
+    (_, s2s), pmp = pmps
+    assert pmp.number_of_s2s == len(s2s)
