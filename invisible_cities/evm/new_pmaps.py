@@ -1,3 +1,9 @@
+import numpy as np
+
+from .. core.system_of_units_c import units
+from .. core.core_functions    import weighted_mean_and_std
+
+
 class PMap:
 
     @property
@@ -15,40 +21,116 @@ class PMap:
 
 
 class _Peak:
+    _type = "Undefined"
+
+    def __init__(self, times, pmts, sipms):
+        length_times = len(times)
+        length_pmts  = pmts .all_waveforms.shape[1]
+        length_sipms = sipms.all_waveforms.shape[1]
+        if not (length_times == length_pmts ==length_sipms):
+            msg  =  "Shapes don't match!\n"
+            msg += f"times has length {length_times}\n"
+            msg += f"pmts  has length {length_pmts} \n"
+            msg += f"sipms has length {length_sipms}\n"
+            raise ValueError(msg)
+
+        self._times = np.asarray(times)
+        self._pmts  = pmts
+        self._sipms = sipms
 
     @property
-    def sipms(self): pass
+    def times(self):
+        return self._times
 
     @property
-    def pmts(self): pass
+    def pmts(self):
+        return self._pmts
 
     @property
-    def times(self): pass
+    def sipms(self):
+        return self._sipms
 
     @property
-    def time_at_max_energy(self): pass
+    def time_at_max_energy(self):
+        return self.times[np.argmax(self.pmts.sum_over_sensors)]
 
     @property
-    def total_energy(self): pass
+    def total_energy(self):
+        return self.energy_above_threshold(0)
 
     @property
-    def height(self): pass
+    def total_charge(self):
+        return self.charge_above_threshold(0)
 
     @property
-    def width(self): pass
+    def height(self):
+        return np.max(self.pmts.sum_over_sensors)
 
     @property
-    def rms(self): pass
+    def width(self):
+        return self.width_above_threshold(0)
 
-    def energy_above_threshold(self, thr): pass
+    @property
+    def rms(self):
+        return self.rms_above_threshold(0)
 
-    def  width_above_threshold(self, thr): pass
+    def  _pmt_indices_above_threshold(self, thr):
+        return np.where(self.pmts.sum_over_sensors >= thr)[0]
 
-    def    rms_above_threshold(self, thr): pass
+    def _sipm_indices_above_threshold(self, thr):
+        return np.where(self.sipms.sum_over_sensors >= thr)[0]
+
+    def        energy_above_threshold(self, thr):
+        i_above_thr  = self._pmt_indices_above_threshold(thr)
+        wf_above_thr = self.pmts.sum_over_sensors[i_above_thr]
+        return np.sum(wf_above_thr)
+
+    def        charge_above_threshold(self, thr):
+        i_above_thr  = self._sipm_indices_above_threshold(thr)
+        wf_above_thr = self.sipms.sum_over_sensors[i_above_thr]
+        return np.sum(wf_above_thr)
+
+    def         width_above_threshold(self, thr):
+        i_above_thr     = self._pmt_indices_above_threshold(thr)
+        if np.size(i_above_thr) < 1:
+            return 0
+
+        times_above_thr = self.times[i_above_thr]
+        return times_above_thr[-1] - times_above_thr[0]
+
+    def           rms_above_threshold(self, thr):
+        i_above_thr     = self._pmt_indices_above_threshold(thr)
+        times_above_thr = self.times[i_above_thr]
+        wf_above_thr    = self.pmts.sum_over_sensors[i_above_thr]
+        if np.size(i_above_thr) < 2 or np.sum(wf_above_thr) == 0:
+            return 0
+
+        return weighted_mean_and_std(times_above_thr, wf_above_thr)[1]
+
+    def __str__(self):
+        n_samples = len(self.times)
+        s  =  "---------------------\n"
+        s += f"{self._type} instance\n"
+        s +=  "---------------------\n"
+        s += f"Number of samples: {n_samples}\n"
+        s += f"Times: {self.times / units.mus} µs\n"
+        s += f"Time @ max energy: {self.time_at_max_energy / units.mus}\n"
+        s += f"Width: {self.width / units.mus} µs\n"
+        s += f"Height: {self.height} pes\n"
+        s += f"Energy: {self.total_energy} pes\n"
+        s += f"Charge: {self.total_charge} pes\n"
+        s += f"RMS: {self.rms / units.mus} µs\n"
+        return s + "\n"
 
 
-class S1(_Peak): pass
-class S2(_Peak): pass
+    __repr__ = __str__
+
+class S1(_Peak):
+    _type = "S1"
+
+
+class S2(_Peak):
+    _type = "S2"
 
 
 class _SensorResponses:
