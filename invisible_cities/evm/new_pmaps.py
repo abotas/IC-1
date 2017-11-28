@@ -6,32 +6,15 @@ from .. core.core_functions    import weighted_mean_and_std
 
 class PMap:
     def __init__(self, s1s, s2s):
-        self._s1s = tuple(s1s)
-        self._s2s = tuple(s2s)
-
-    @property
-    def s1s(self):
-        return self._s1s
-
-    @property
-    def s2s(self):
-        return self._s2s
-
-    # Optionally:
-    @property
-    def number_of_s1s(self):
-        return len(self.s1s)
-
-    @property
-    def number_of_s2s(self):
-        return len(self.s2s)
+        self.s1s = tuple(s1s)
+        self.s2s = tuple(s2s)
 
     def __str__(self):
         s  =  "---------------------\n"
         s += f"PMap instance\n"
         s +=  "---------------------\n"
-        s += f"Number of S1s: {self.number_of_s1s)}\n"
-        s += f"Number of S2s: {self.number_of_s2s)}\n"
+        s += f"Number of S1s: {len(self.s1s)}\n"
+        s += f"Number of S2s: {len(self.s2s)}\n"
         return s + "\n"
 
 
@@ -49,45 +32,17 @@ class _Peak:
             msg += f"sipms has length {length_sipms}\n"
             raise ValueError(msg)
 
-        self._times = np.asarray(times)
-        self._pmts  = pmts
-        self._sipms = sipms
+        self.times = np.asarray(times)
+        self.pmts  = pmts
+        self.sipms = sipms
 
-    @property
-    def times(self):
-        return self._times
-
-    @property
-    def pmts(self):
-        return self._pmts
-
-    @property
-    def sipms(self):
-        return self._sipms
-
-    @property
-    def time_at_max_energy(self):
-        return self.times[np.argmax(self.pmts.sum_over_sensors)]
-
-    @property
-    def total_energy(self):
-        return self.energy_above_threshold(0)
-
-    @property
-    def total_charge(self):
-        return self.charge_above_threshold(0)
-
-    @property
-    def height(self):
-        return np.max(self.pmts.sum_over_sensors)
-
-    @property
-    def width(self):
-        return self.width_above_threshold(0)
-
-    @property
-    def rms(self):
-        return self.rms_above_threshold(0)
+        i_max                   = np.argmax(self.pmts.sum_over_sensors)
+        self.time_at_max_energy = self.times[i_max]
+        self.height             = np.max(self.pmts.sum_over_sensors)
+        self.total_energy       = self.energy_above_threshold(0)
+        self.total_charge       = self.charge_above_threshold(0)
+        self.width              = self. width_above_threshold(0)
+        self.rms                = self.   rms_above_threshold(0)
 
     def  _pmt_indices_above_threshold(self, thr):
         return np.where(self.pmts.sum_over_sensors >= thr)[0]
@@ -137,7 +92,6 @@ class _Peak:
         s += f"RMS: {self.rms / units.mus} µs\n"
         return s + "\n"
 
-
     __repr__ = __str__
 
 
@@ -153,33 +107,18 @@ class _SensorResponses:
             msg += f"wfs has length {len(wfs)}\n"
             raise ValueError(msg)
 
-        self._ids              = np.asarray(ids)
-        self._all_waveforms    = np.asarray(wfs)
-        self._wfs_dict         = dict(zip(self._ids, self._all_waveforms))
-        self._sum_over_times   = np.sum(self._all_waveforms, axis=1)
-        self._sum_over_sensors = np.sum(self._all_waveforms, axis=0)
+        self.ids              = np.asarray(ids)
+        self.all_waveforms    = np.asarray(wfs)
+        self.sum_over_times   = np.sum(self.all_waveforms, axis=1)
+        self.sum_over_sensors = np.sum(self.all_waveforms, axis=0)
 
-    @property
-    def all_waveforms(self):
-        return self._all_waveforms
+        self._wfs_dict        = dict(zip(self.ids, self.all_waveforms))
 
     def waveform(self, sensor_id):
         return self._wfs_dict[sensor_id]
 
     def time_slice(self, slice_number):
-        return self._all_waveforms[:, slice_number]
-
-    @property
-    def ids(self):
-        return self._ids
-
-    @property
-    def sum_over_times(self):
-        return self._sum_over_times
-
-    @property
-    def sum_over_sensors(self):
-        return self._sum_over_sensors
+        return self.all_waveforms[:, slice_number]
 
     def __str__(self):
         n_sensors = len(self.ids)
