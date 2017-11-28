@@ -26,8 +26,8 @@ wf_max = 100
 
 @composite
 def sensor_responses(draw, nsamples=None, type_=None):
-    nsensors    = draw(integers(1,  100))
-    nsamples    = draw(integers(1, 1000)) if nsamples is None else nsamples
+    nsensors    = draw(integers(1,  5))
+    nsamples    = draw(integers(1, 50)) if nsamples is None else nsamples
     shape       = nsensors, nsamples
     ids         = draw(arrays(  int, nsensors, integers(0, 1e3), unique=True))
     all_wfs     = draw(arrays(float,    shape, floats  (wf_min, wf_max)))
@@ -39,7 +39,7 @@ def sensor_responses(draw, nsamples=None, type_=None):
 
 @composite
 def peaks(draw, type_=None):
-    nsamples  = draw(integers(1, 1000))
+    nsamples  = draw(integers(1, 50))
     _, pmt_r  = draw(sensor_responses(nsamples,  PMTResponses))
     _, sipm_r = draw(sensor_responses(nsamples, SiPMResponses))
     times     = draw(arrays(float, nsamples,
@@ -52,8 +52,8 @@ def peaks(draw, type_=None):
 
 @composite
 def pmaps(draw):
-    n_s1 = draw(integers(0, 5))
-    n_s2 = draw(integers(0, 5))
+    n_s1 = draw(integers(0, 3))
+    n_s2 = draw(integers(0, 3))
     s1s  = tuple(draw(peaks(S1)) for i in range(n_s1))
     s2s  = tuple(draw(peaks(S2)) for i in range(n_s2))
     args = s1s, s2s
