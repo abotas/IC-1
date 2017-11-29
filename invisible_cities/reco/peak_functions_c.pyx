@@ -213,11 +213,85 @@ cpdef find_peaks(int [:] index, time, length, int stride=4):
     return _select_peaks_of_allowed_length(peak_bounds, length)
 
 
-cpdef extract_peaks_from_waveform(double [:] wf, dict peak_bounds, int rebin_stride=1):
+cpdef rebin_responses(double[:] times, double[:, :] pmt_wfs, int rebin_stride):
+    int number_of_bins = np.ceil(len(times)//rebin_stride).astype(int)
+
+    double[:] rebinned_times
+    double[:] rebinned_wfs
+
+    for i in range(number_of_bins):
+        s  = slice(rebin_stride * i, rebin_stride * (i + 1))
+        t  = times[s]
+        e  = pmt_wfs[:, s]
+        rebinned_times[i]    = np.average(t, weights=e)
+        rebinned_wfs  [:, i] = np.sum(e)
+    return rebinned_times, rebinned_wfs
+
+
+cpdef filter_out_empty_sipms(double[:, :] sipm_wfs, double thr):
+    cdef int   [:]    selected_ids
+    cdef double[:, :] selected_wfs
+
+    selected_ids = np.where(sipm_wfs.sum(axis=1) >= thr)[0]
+    selected_wfs = sipm_wfs[selected_ids]
+    return selected_ids, selected_wfs
+
+
+cpdef find_s1s(int   [:]    index,
+               double[:]    times,
+               double[:, :] ccwf,
+               time, length,
+               int stride):
+    cdef double [:]    pk_times
+    cdef double [:, :] pmt_wfs
+    cdef list          peaks   = []
+    cdef int    [:]    pmt_ids = np.arange(ccwf.shape[0])
+
+    s1_peaks = find_peaks(index, time, length, stride)
+    for peak_no, pmt_indices in s1_peaks.items():
+        pk_times = times[   slice(*pmt_indices)]
+        pmt_wfs  = ccwf [:, slice(*pmt_indices)]
+        pmt_r    = PMTResponse(pmt_ids, pmt_wfs)
+        pk       = S1(pk_times, pmt_r, empty_sipm_response)
+        peaks.append(pk)
+    return peaks
+
+
+cpdef find_s2s(int   [:]    index,
+               double[:]    times,
+               double[:, :] ccwf,
+               time, length,
+               int stride,
+               int rebin_stride):
+    cdef double [:]    pk_times
+    cdef double [:, :] pmt_wfs
+    cdef list          peaks   = []
+    cdef int    [:]    pmt_ids = np.arange(ccwf.shape[0])
+
+    s2_peaks = find_peaks(index, time, length, stride)
+    for peak_no, pmt_indices in s2_peaks.items():
+        pk_times = times[   slice(*pmt_indices)]
+        pmt_wfs  = ccwf [:, slice(*pmt_indices)]
+
+        (pk_times,
+         pmt_wfs) = rebin_responses(pk_times, pmt_wfs, rebin_stride)
+
+        sipm_indices = tuple(i // rebin_stride for i in pmt_indices)
+        sipm_wfs     = sipmzs[:, slice(*sipm_indices)]
+        (sipm_ids,
+         sipm_wfs)   = filter_out_empty_sipms(sipm_wfs, thr_sipm_s2)
+
+        pmt_r  =  PMTResponses( pmt_ids,  pmt_wfs)
+        sipm_r = SiPMResponses(sipm_ids, sipm_wfs)
+        pk     = S2(pk_times, pmt_r, sipm_r)
+        peaks.append(pk)
+    return peaks
+
+
+cpdef extract_peak_from_waveform(double [:] wf, int min_index, int max_index):
     cdef int j = 0
-    cdef dict S12L = {}
     cdef double [:] wf_peak
-    for peak_no, i_peak in peak_bounds.items():
+    return wf[min_index : max_index]
         wf_peak = wf[i_peak[0]: i_peak[1]]
         if rebin_stride > 1:
             TR, ER = rebin_waveform(*_time_from_index(i_peak), wf_peak, stride=rebin_stride)
@@ -229,63 +303,35 @@ cpdef extract_peaks_from_waveform(double [:] wf, dict peak_bounds, int rebin_str
     return S12L
 
 
-cpdef find_s1(double [:] csum,  int [:] index,
-              time, length,
-              int stride=4, int rebin_stride=1):
+cpdef get_s1_response(double [:,:] ccwf,
+                      int          min_index,
+                      int          max_index):
+      for i in pmts:
+        extract_peaks_from_waveform(ccwf[i], )
+
+cpdef get_pmt_responses(double [:,:] ccwf,
+                        int    [:]  index,
+                        time,      length,
+                        int        stride,
+                        int  rebin_stride):
     """
-    find s1 peaks and returns S1 objects. Will raise InitializedEmptyPmapObject if there is no S1
+    Find peaks in the energy plane and return a sequence of SensorResponses.
     """
-    try:
-        return S1(find_s12(csum, index, time, length, stride, rebin_stride))
-    except InitializedEmptyPmapObject:
-        return None
+    bounds = find_peaks(index, time, length, stride)
+    ids    = np.arange(np.shape(ccwf)[0])
+    peaks  = get_ipmtd(ccwf, bounds, rebin_stride=rebin_stride).values()
+    pmt_r  = [SensorResponses(ids, np.asarray(wfs)) for wfs in peaks]
+    return pmt_r
 
 
-cpdef find_s1_ipmt(double [:,:] ccwf, double [:] csum, int [:] index,
-                   time, length, int stride=4, int rebin_stride=1):
+cpdef get_sipm_responses(double [:, :] sipmzs, list pmt_r, double thr):
     """
-    find s1 peaks and return s1 and s1pmt objects. Will raise InitializedEmptyPmapObject if no S1
+    Retrieve peaks from the traking plane using the information of the
+    energy plane and return a sequence of SensorResponses.
     """
-    # Find indices bounding s1-like peaks
-    s1_bounds = find_peaks(index, time, length, stride)
-    try:
-        s1    = S1(extract_peaks_from_waveform(csum, s1_bounds, rebin_stride=rebin_stride))
-        s1pmt = S1Pmt(s1.s1d, get_ipmtd(ccwf, s1_bounds, rebin_stride=rebin_stride))
-    except InitializedEmptyPmapObject:
-        return None, None
-    return s1, s1pmt
 
 
-cpdef find_s2_ipmt(double [:,:] ccwf, double [:] csum,  int [:] index,
-              time, length, int stride=4, int rebin_stride=40):
-    """find s2 peaks and return s2 and s2pmt objects"""
-    # Find indices bounding s2-like peaks
-    s2_bounds = find_peaks(index, time, length, stride)
-    try:
-        s2    = S2(extract_peaks_from_waveform(csum, s2_bounds, rebin_stride=rebin_stride))
-        s2pmt = S2Pmt(s2.s2d, get_ipmtd(ccwf, s2_bounds, rebin_stride=rebin_stride))
-    except InitializedEmptyPmapObject:
-        return None, None
 
-    return s2, s2pmt
-
-
-cpdef find_s2(double [:] csum,  int [:] index,
-              time, length,
-              int stride=40, int rebin_stride=40):
-    """
-    find s2 peaks and returns S2 objects.  Will raise InitializedEmptyPmapObject if there is no S2
-    """
-    try:
-        return S2(find_s12(csum, index, time, length, stride, rebin_stride))
-    except InitializedEmptyPmapObject:
-        return None
-
-
-cpdef find_s2si(double [:, :] sipmzs, dict s2d, double thr):
-    """
-    find s2si and returns S2Si objects.  Will raise InitializedEmptyPmapObject if there is no S2Si
-    """
     s2sid = sipm_s2sid(sipmzs, s2d, thr)
     try:
         return S2Si(s2d, s2sid)
