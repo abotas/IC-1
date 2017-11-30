@@ -13,7 +13,9 @@ from .. reco.pmaps_functions_c      import df_to_s1pmt_dict
 from .. reco.pmaps_functions_c      import df_to_s2pmt_dict
 
 
-def store_peak(pmt_table, pmti_table, si_table, peak, peak_number, event_number, timestamp):
+def store_peak(pmt_table, pmti_table, si_table,
+               peak, peak_number,
+               event_number, timestamp):
     pmt_row  = pmt_table.row
     pmti_row = pmti_table.row
     si_row   = si_table.row
@@ -75,7 +77,7 @@ def _make_tables(hdf5_file, compression):
 
 def load_pmaps_as_df(filename):
     """Return the PMAPS as PD DataFrames."""
-    with tb.open_file(PMP_file_name, 'r') as h5f:
+    with tb.open_file(filename, 'r') as h5f:
         s1t    = h5f.root.PMAPS.S1
         s2t    = h5f.root.PMAPS.S2
         s2sit  = h5f.root.PMAPS.S2Si
@@ -92,7 +94,7 @@ def load_pmaps_as_df(filename):
 def load_pmaps(filename):
     """Read the PMAP file and return transient PMAP rep."""
     pmap_dict = {}
-    s1df, s2df, sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(PMP_file_name)
+    s1df, s2df, sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(filename)
 
     event_numbers = set.union(set(s1t.event), set(s2t.event))
     for event_number in event_numbers:
@@ -146,9 +148,9 @@ def s2s_from_df(s2df, s2pmtdf, sidf):
     return s2s
 
 
-def read_run_and_event_from_pmaps_file(PMP_file_name):
+def read_run_and_event_from_pmaps_file(filename):
     """Return the PMAPS as PD DataFrames."""
-    with tb.open_file(PMP_file_name, 'r') as h5f:
+    with tb.open_file(filename, 'r') as h5f:
         event_t = h5f.root.Run.events
         run_t   = h5f.root.Run.runInfo
 
