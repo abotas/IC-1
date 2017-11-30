@@ -214,17 +214,19 @@ cpdef find_peaks(int [:] index, time, length, int stride=4):
 
 
 cpdef rebin_responses(double[:] times, double[:, :] pmt_wfs, int rebin_stride):
-    int number_of_bins = np.ceil(len(times)//rebin_stride).astype(int)
+    int number_of_bins = np.ceil(len(times) // rebin_stride).astype(int)
 
-    double[:] rebinned_times
-    double[:] rebinned_wfs
+    double [:]    rebinned_times
+    double [:, :] rebinned_wfs
+    double [:]    t
+    double [:]    e
 
     for i in range(number_of_bins):
         s  = slice(rebin_stride * i, rebin_stride * (i + 1))
         t  = times[s]
         e  = pmt_wfs[:, s]
         rebinned_times[i]    = np.average(t, weights=e)
-        rebinned_wfs  [:, i] = np.sum(e)
+        rebinned_wfs  [:, i] = np.sum(e, axis=1)
     return rebinned_times, rebinned_wfs
 
 
@@ -260,6 +262,7 @@ cpdef find_s1s(int   [:]    index,
 cpdef find_s2s(int   [:]    index,
                double[:]    times,
                double[:, :] ccwf,
+               double[:, :] sipmzs,
                time, length,
                int stride,
                int rebin_stride):
@@ -286,168 +289,6 @@ cpdef find_s2s(int   [:]    index,
         pk     = S2(pk_times, pmt_r, sipm_r)
         peaks.append(pk)
     return peaks
-
-
-cpdef extract_peak_from_waveform(double [:] wf, int min_index, int max_index):
-    cdef int j = 0
-    cdef double [:] wf_peak
-    return wf[min_index : max_index]
-        wf_peak = wf[i_peak[0]: i_peak[1]]
-        if rebin_stride > 1:
-            TR, ER = rebin_waveform(*_time_from_index(i_peak), wf_peak, stride=rebin_stride)
-            S12L[j] = [TR, ER]
-        else:
-            S12L[j] = [np.arange(*_time_from_index(i_peak), 25*units.ns), np.asarray(wf_peak)]
-        j += 1
-
-    return S12L
-
-
-cpdef get_s1_response(double [:,:] ccwf,
-                      int          min_index,
-                      int          max_index):
-      for i in pmts:
-        extract_peaks_from_waveform(ccwf[i], )
-
-cpdef get_pmt_responses(double [:,:] ccwf,
-                        int    [:]  index,
-                        time,      length,
-                        int        stride,
-                        int  rebin_stride):
-    """
-    Find peaks in the energy plane and return a sequence of SensorResponses.
-    """
-    bounds = find_peaks(index, time, length, stride)
-    ids    = np.arange(np.shape(ccwf)[0])
-    peaks  = get_ipmtd(ccwf, bounds, rebin_stride=rebin_stride).values()
-    pmt_r  = [SensorResponses(ids, np.asarray(wfs)) for wfs in peaks]
-    return pmt_r
-
-
-cpdef get_sipm_responses(double [:, :] sipmzs, list pmt_r, double thr):
-    """
-    Retrieve peaks from the traking plane using the information of the
-    energy plane and return a sequence of SensorResponses.
-    """
-
-
-
-    s2sid = sipm_s2sid(sipmzs, s2d, thr)
-    try:
-        return S2Si(s2d, s2sid)
-    except InitializedEmptyPmapObject:
-        return None
-
-
-cpdef find_s12(double [:] csum,  int [:] index,
-               time, length, int stride, int rebin_stride):
-    """
-    Find S1/S2 peaks.
-    input:
-    csum:   a summed (across pmts) waveform
-    indx:   a vector of indexes
-    returns a dictionary
-    do not interrupt the peak if next sample comes within stride
-    accept the peak only if within [lmin, lmax)
-    accept the peak only if within [tmin, tmax)
-    returns a dictionary of S12
-    """
-    return extract_peaks_from_waveform(
-        csum, find_peaks(index, time, length, stride=stride), rebin_stride=rebin_stride)
-
-
-cpdef get_ipmtd(double [:,:] ccwf, dict peak_bounds, int rebin_stride=1):
-    """
-    Given the calibrated corrected waveforms of all active pmts for one event, CWF, and the
-    boundaries of all of the s12 peaks found in the csum, peak_bounds, return the s12 peaks of the
-    individual pmts, s12pmtd.
-    """
-    # extract the peaks from the cwf of each pmt
-    cdef list s12Ls
-    S12Ls = [extract_peaks_from_waveform(wf, peak_bounds, rebin_stride=rebin_stride) \
-             for wf in ccwf]
-
-    cdef dict s12pmtd = {}
-    cdef int npmts  = len(S12Ls)
-    cdef int pn, pmt
-    for pn in peak_bounds:
-        # initialize an the array of pmt energies with shape npmts, len(peak.t)
-        s12pmtd[pn] = np.empty((npmts, len(S12Ls[0][pn][0])), dtype=np.float32)
-        # fill the array of pmt s2 energies one pmt at a time
-        for pmt in range(npmts): s12pmtd[pn][pmt] = S12Ls[pmt][pn][1]
-
-    return s12pmtd
-
-
-cpdef correct_s1_ene(dict s1d, np.ndarray csum):
-    """Will raise InitializedEmptyPmapObject if there is no S2Si"""
-    cdef dict S1_corr = {}
-    cdef int peak_no
-    for peak_no, (t, _) in s1d.items():
-        indices          = (t // 25).astype(int)
-        S1_corr[peak_no] = t, csum[indices]
-
-    try:
-        return S1(S1_corr)
-    except InitializedEmptyPmapObject:
-        return None
-
-
-cpdef rebin_waveform(int ts, int t_finish, double[:] wf, int stride=40):
-    """
-    Rebin a waveform according to stride
-    The input waveform is a vector such that the index expresses time bin and the
-    contents expresses energy (e.g, in pes)
-    The function returns the rebinned T& E vectors.
-    """
-
-    assert (ts < t_finish)
-    cdef int  bs = 25*units.ns # bin size
-    cdef int rbs = bs * stride # rebinned bin size
-
-    # Find the nearest time (in stride samples) before ts
-    cdef int t_start  = (ts // (rbs)) * rbs
-    cdef int t_total  = t_finish - t_start
-    cdef int n = t_total // (rbs)
-    cdef int r = t_total  % (rbs)
-
-    lenb = n
-    if r > 0: lenb = n+1
-
-    cdef double [:] T = np.zeros(lenb, dtype=np.double)
-    cdef double [:] E = np.zeros(lenb, dtype=np.double)
-
-    cdef int j = 0
-    cdef int i, tb
-    cdef double esum
-    for i in range(n):
-        esum = 0
-        for tb in range(int(t_start +     i*rbs),
-                        int(t_start + (1+i)*rbs),
-                        int(bs)):
-            if tb < ts: continue
-            esum  += wf[j]
-            j     += 1
-
-        E[i] = esum
-        if i == 0: T[i] = np.mean((ts, t_start + rbs))
-        else     : T[i] = t_start + i*rbs + rbs/2.0
-
-    if r > 0:
-        esum  = 0
-        for tb in range(int(t_start + n*rbs),
-                       int(t_finish),
-                       int(bs)):
-            if tb < ts:continue
-            esum  += wf[j]
-            j     += 1
-
-        E[n] = esum
-        if n == 0: T[n] = np.mean((ts, t_finish))
-        else     : T[n] = (t_start + n*rbs + t_finish) / 2.0
-
-    assert j == len(wf)
-    return np.asarray(T), np.asarray(E)
 
 
 cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
@@ -499,7 +340,7 @@ cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
     return np.asarray(siwf)
 
 
-cpdef select_sipm(double [:, :] sipmzs):
+cpdef select_sipm(double [:, :] sipmzs, double eps=1e-3):
     """
     Selects the SiPMs with signal
     and returns a dictionary:
@@ -520,70 +361,5 @@ cpdef select_sipm(double [:, :] sipmzs):
     cdef int i, j, k
     cdef double psum
 
-    j = 0
-    for i in range(NSIPM):
-        psum = 0
-        for k in range(NWFM):
-            psum += sipmzs[i,k]
-        if psum > 0:
-            SIPM[j] = [i,np.asarray(sipmzs[i])]
-            j += 1
-    return SIPM
-
-
-cdef _index_from_s2(list s2l):
-    """Return the indexes defining the vector."""
-    cdef int t0 = int(s2l[0][0] // units.mus)
-    return t0, t0 + len(s2l[0])
-
-
-cdef sipm_s2(dict dSIPM, list s2l, double thr):
-    """Given a dict with SIPMs (energies above threshold),
-    return a dict of np arrays, where the key is the sipm
-    with signal.
-
-    input {j: [i, sipmzs[i]]}, where:
-           j: enumerates sipms with psum >0
-           i: sipm ID
-          S2d defining an S2 signal
-
-    returns:
-          {i, sipm_i[i0:i1]} where:
-          i: sipm ID
-          sipm_i[i0:i1] waveform corresponding to SiPm i between:
-          i0: min index of S2d
-          i1: max index of S2d
-          only IF the total energy of SiPM is above thr
-
-    """
-
-    cdef int i0, i1, ID
-    i0, i1 = _index_from_s2(s2l)
-    cdef dict SIPML = {}
-    cdef double psum
-
-    for ID, sipm in dSIPM.values():
-        slices = sipm[i0:i1]
-        psum = np.sum(slices)
-        if psum > thr:
-            SIPML[ID] = slices.astype(np.double)
-    return SIPML
-
-
-cdef sipm_s2sid(double [:, :] sipmzs, dict s2d, double thr):
-    """Given a vector with SIPMs (energies above threshold), and a
-    dictionary S2d, returns a dictionary of SiPMs-S2.  Each
-    index of the dictionary correspond to one S2 and is a list of np
-    arrays. Each element of the list is the S2 window in the SiPM (if
-    not zero)
-
-    """
-    # dict dSIPM
-    # select_sipm(sipmzs)
-    cdef int peak_no
-    cdef list s2l
-    cdef dict s2si = {}
-    for peak_no, s2l in s2d.items():
-        s2si[peak_no] = sipm_s2(select_sipm(sipmzs), s2l, thr=thr)
-
-    return s2si
+    selected_ids, selected_wfs = filter_out_empty_sipms(sipmzs, eps)
+    return dict(zip(selected_ids, selected_wfs))
