@@ -14,13 +14,13 @@ last revised: JJGC, 10-July-2017
 
 import numpy  as np
 
-from . import peak_functions_c as cpf
-
-from .. evm.new_pmaps import S1
-from .. evm.new_pmaps import S2
-from .. evm.new_pmaps import PMap
-from .. evm.new_pmaps import PMTResponses
-from .. evm.new_pmaps import SiPMResponses
+from .. core.system_of_units import units
+from .. evm .new_pmaps       import S1
+from .. evm .new_pmaps       import S2
+from .. evm .new_pmaps       import PMap
+from .. evm .new_pmaps       import PMTResponses
+from .. evm .new_pmaps       import SiPMResponses
+from .                       import peak_functions_c as cpf
 
 
 def select_sipms_above_time_integrated_thr(sipm_wfs, thr):
@@ -35,9 +35,10 @@ def find_peaks(ccwf, index,
                Pk, sipm_zs_wf=None):
     peaks   = []
     pmt_ids = np.arange(ccwf.shape[0])
+    times   = np.arange(ccwf.shape[1]) * 25 * units.ns
     sipm_r  = None
 
-    peak_bounds = find_peaks(index, time, length, stride)
+    peak_bounds = cpf.find_peak_bounds(index, time, length, stride)
     for peak_no, pmt_bounds in peak_bounds.items():
         pk_times_  = times[   slice(*pmt_bounds)]
         pmt_wfs_   = ccwf [:, slice(*pmt_bounds)]
@@ -55,3 +56,8 @@ def find_peaks(ccwf, index,
         pk = Pk(pk_times, pmt_r, sipm_r)
         peaks.append(pk)
     return peaks
+
+
+def get_pmap(ccwf, s1_indx, s2_indx, sipm_zs_wf, s1_params, s2_params):
+    return PMap(find_peaks(ccwf, s1_indx, Pk=S1,                **s1_params),
+                find_peaks(ccwf, s2_indx, Pk=S2, sipm_zs_wf=sipm_zs_wf, **s2_params))
