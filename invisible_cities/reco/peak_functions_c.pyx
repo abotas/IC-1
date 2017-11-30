@@ -177,7 +177,7 @@ cpdef _select_peaks_of_allowed_length(dict peak_bounds_temp, length):
     return peak_bounds
 
 
-cpdef find_peaks(int [:] index, time, length, int stride=4):
+cpdef find_peak_bounds(int [:] index, time, length, int stride=4):
     cdef double tmin, tmax
     cdef double [:] T = _time_from_index(index)
     cdef dict peak_bounds  = {}

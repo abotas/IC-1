@@ -17,13 +17,13 @@ cpdef  _select_peaks_of_allowed_length(dict peak_bounds_temp, length)
 
 
 """
-find_peaks finds the start and stop indices of all the peaks within the time boundaries prescribed
+find_peak_bounds finds the start and stop indices of all the peaks within the time boundaries prescribed
 by time.
 
-Note: for now find_peaks cannot be used to find s2si peaks as time associated with indices is
+Note: for now find_peak_bounds cannot be used to find s2si peaks as time associated with indices is
 assumed to be index*25ns in time_from_index function
 """
-cpdef find_peaks(int [:] index, time, length, int stride=*)
+cpdef find_peak_bounds(int [:] index, time, length, int stride=*)
 
 
 
