@@ -597,13 +597,7 @@ class PmapCity(CalibratedCity):
 
 
     def pmaps(self, s1_indx, s2_indx, ccwf, csum, sipmzs):
-        """Computes s1, s2 and s2si objects (PMAPS)"""
-        if self.compute_ipmt_pmaps:
-            return pmp.get_pmaps_with_ipmt(s1_indx, s2_indx, ccwf, csum, sipmzs,
-                                           self.s1_params, self.s2_params, self.thr_sipm_s2)
-        else:
-            return pmp.get_pmaps(s1_indx, s2_indx, csum, sipmzs,
-                                 self.s1_params, self.s2_params, self.thr_sipm_s2)
+        return pmp.get_pmaps(s1_indx, s2_indx, ccwf, csum, sipmzs, s1_params, s2_params, thr_sipm_s2)
 
 
 class DstCity(City):
