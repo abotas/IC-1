@@ -213,7 +213,7 @@ cpdef rebin_responses(np.ndarray[np.float32_t, ndim=1] times,
 
     if rebin_stride < 2: return times, waveforms
 
-    cdef int n_bins    = np.ceil(len(times) // rebin_stride).astype(int)
+    cdef int n_bins    = np.ceil(len(times) / rebin_stride).astype(int)
     cdef int n_sensors = waveforms.shape[0]
 
     cdef np.ndarray[np.float32_t, ndim=1] rebinned_times = np.zeros(            n_bins , dtype=np.float32)
