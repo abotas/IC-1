@@ -89,7 +89,7 @@ def test_SensorResponses_time_slice(srs):
 @given(sensor_responses())
 def test_SensorResponses_sum_over_times(srs):
     (_, all_waveforms), sr = srs
-    assert np.sum(all_waveforms, axis=1) == approx(sr.sum_over_times)
+    assert np.allclose(np.sum(all_waveforms, axis=1), sr.sum_over_times)
 
 
 @given(sensor_responses())
