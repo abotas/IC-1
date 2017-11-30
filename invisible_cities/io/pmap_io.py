@@ -29,7 +29,7 @@ def store_peak(pmt_table, pmti_table, si_table,
             pmti_row['ene'  ] = e
             pmti_row.append()
 
-    if si_table is None: continue
+    if si_table is None: return
     for sipm_id in zip(peak.sipms.ids):
         for q in peak.sipms.waveform(sipm_id):
             si_row['event'] = event_number
