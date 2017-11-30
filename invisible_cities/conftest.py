@@ -9,7 +9,7 @@ from collections import namedtuple
 from . io.pmap_io   import df_to_s1_dict
 from . io.pmap_io   import df_to_s2_dict
 from . io.pmap_io   import df_to_s2si_dict
-from . io.pmap_io   import read_pmaps
+from . io.pmap_io   import load_pmaps_as_df
 from . io.pmap_io   import load_pmaps
 from . io.pmap_io   import load_pmaps_with_ipmt
 from . io. dst_io   import load_dst
@@ -155,7 +155,7 @@ def KrMC_pmaps(ICDIR):
     S1_evts   = [15, 17, 19, 25, 27]
     S2_evts   = [15, 17, 19, 21, 23, 25, 27, 29, 31, 33]
     S2Si_evts = [15, 17, 19, 21, 23, 25, 27, 29, 31, 33]
-    s1t, s2t, s2sit = read_pmaps(test_file)
+    s1t, s2t, s2sit = load_pmaps_as_df(test_file)
     s1, s2, s2si    = load_pmaps(test_file)
 
     return (test_file,
