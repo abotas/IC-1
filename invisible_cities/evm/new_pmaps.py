@@ -145,3 +145,36 @@ class PMTResponses(_SensorResponses):
 
 class SiPMResponses(_SensorResponses):
     _type = "SiPMResponses"
+
+
+def store_pmap(tables, pmap, event_number, timestamp):
+    s1_table, s2_table, si_table, s1i_table, s2i_table = tables
+    for s1 in pmap.s1s: store_peak(s1_table, s1i_table,     None, s1, event_number, timestamp)
+    for s2 in pmap.s2s: store_peak(s2_table, s2i_table, si_table, s2, event_number, timestamp)
+
+def store_peak(pmt_table, pmti_table, si_table, peak, peak_number, event_number, timestamp):
+    pmt_row  = pmt_table.row
+    pmti_row = pmti_table.row
+    si_row   = si_table.row
+
+    for i, t in enumerate(peak.times):
+        pmt_row['event'] = event_number
+        pmt_row['peak' ] =  peak_number
+        pmt_row['time' ] = t
+        pmt_row['ene'  ] = peak.pmts.sum_over_sensors[i]
+        pmt_row.append()
+
+        for pmt_id in zip(peak.pmts.ids):
+            pmti_row['event'] = event_number
+            pmti_row['peak' ] =  peak_number
+            pmti_row['npmt' ] = pmt_id
+            pmti_row['ene'  ] = peak.pmts.waveform(pmt_id)[i]
+            pmti_row.append()
+
+        if si_table is None: continue
+        for sipm_id in zip(peak.sipms.ids):
+            si_row['event'] = event_number
+            si_row['peak' ] =  peak_number
+            si_row['nsipm'] = sipm_id
+            si_row['ene'  ] = peak.sipms.waveform(sipm_id)[i]
+            si_row.append()
