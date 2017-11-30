@@ -46,32 +46,26 @@ class _Peak:
         self.width              = self. width_above_threshold(0)
         self.rms                = self.   rms_above_threshold(0)
 
-    def  _pmt_indices_above_threshold(self, thr):
-        return np.where(self.pmts.sum_over_sensors >= thr)[0]
-
-    def _sipm_indices_above_threshold(self, thr):
-        return np.where(self.sipms.sum_over_sensors >= thr)[0]
-
-    def        energy_above_threshold(self, thr):
-        i_above_thr  = self._pmt_indices_above_threshold(thr)
+    def energy_above_threshold(self, thr):
+        i_above_thr  = self.pmts.where_above_threshold(thr)
         wf_above_thr = self.pmts.sum_over_sensors[i_above_thr]
         return np.sum(wf_above_thr)
 
-    def        charge_above_threshold(self, thr):
-        i_above_thr  = self._sipm_indices_above_threshold(thr)
+    def charge_above_threshold(self, thr):
+        i_above_thr  = self.sipms.where_above_threshold(thr)
         wf_above_thr = self.sipms.sum_over_sensors[i_above_thr]
         return np.sum(wf_above_thr)
 
-    def         width_above_threshold(self, thr):
-        i_above_thr     = self._pmt_indices_above_threshold(thr)
+    def  width_above_threshold(self, thr):
+        i_above_thr  = self.pmts.where_above_threshold(thr)
         if np.size(i_above_thr) < 1:
             return 0
 
         times_above_thr = self.times[i_above_thr]
         return times_above_thr[-1] - times_above_thr[0]
 
-    def           rms_above_threshold(self, thr):
-        i_above_thr     = self._pmt_indices_above_threshold(thr)
+    def    rms_above_threshold(self, thr):
+        i_above_thr     = self.pmts.where_above_threshold(thr)
         times_above_thr = self.times[i_above_thr]
         wf_above_thr    = self.pmts.sum_over_sensors[i_above_thr]
         if np.size(i_above_thr) < 2 or np.sum(wf_above_thr) == 0:
@@ -126,6 +120,9 @@ class _SensorResponses:
 
     def time_slice(self, slice_number):
         return self.all_waveforms[:, slice_number]
+
+    def where_above_threshold(self, thr):
+        return np.where(self.sum_over_sensors >= thr)[0]
 
     def __str__(self):
         n_sensors = len(self.ids)
