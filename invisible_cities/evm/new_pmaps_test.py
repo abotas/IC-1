@@ -11,7 +11,8 @@ from hypothesis.strategies  import sampled_from
 from hypothesis.strategies  import composite
 from hypothesis.extra.numpy import arrays
 
-from .. core.core_functions import weighted_mean_and_std
+from .. core.core_functions   import weighted_mean_and_std
+from .. reco.peak_functions_c import rebin_responses
 
 from  . new_pmaps import  PMTResponses
 from  . new_pmaps import SiPMResponses
@@ -264,6 +265,19 @@ def test_Peak_raises_exception_when_shapes_dont_match(PK, sr1, sr2):
         _         , sr2 = sr2
         n_samples       = wfs.shape[1]
         pk = PK(np.empty(n_samples + 1), sr1, sr2)
+
+
+@given(peaks(), integers(min_value=1))
+def test_Peak_rebin(pks, rebin_factor):
+    (times, pmt_r, sipm_r), peak = pks
+    rb_peak = pk.rebin(rebin_factor)
+
+    rb_times, rb_pmt_wfs  = rebin_responses(times, pmt_r .all_waveforms)
+    _       , rb_sipm_wfs = rebin_responses(times, sipm_r.all_waveforms)
+
+    assert rb_peak.times               == approx(rb_times   )
+    assert rb_peak.pmts .all_waveforms == approx(rb_pmt_wfs )
+    assert rb_peak.sipms.all_waveforms == approx(rb_sipm_wfs)
 
 
 @given(pmaps())

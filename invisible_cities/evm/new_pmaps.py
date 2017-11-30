@@ -73,6 +73,15 @@ class _Peak:
 
         return weighted_mean_and_std(times_above_thr, wf_above_thr)[1]
 
+    def rebin(self, rebin_factor):
+        rb_times, rb_pmt_wfs  = rebin_responses(self.times, self.pmts .all_waveforms)
+        _       , rb_sipm_wfs = rebin_responses(self.times, self.sipms.all_waveforms)
+
+        rb_pmt_r  = PMTResponses (self.pmts .ids,  rb_pmt_wfs)
+        rb_sipm_r = SiPMResponses(self.sipms.ids, rb_sipm_wfs)
+
+        return self.__class__(rb_times, rb_pmt_r, rb_sipm_r)
+
     def __str__(self):
         n_samples = len(self.times)
         s  =  "---------------------\n"
