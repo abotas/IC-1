@@ -48,6 +48,30 @@ def store_peak(pmt_table, pmti_table, si_table, peak, peak_number, event_number,
             si_row.append()
 
 
+def pmap_writer(file, *, compression='ZLIB4'):
+    tables = _make_tables(file, compression)
+    return partial(store_pmap, tables)
+
+
+def _make_tables(hdf5_file, compression):
+    c = tbl.filters(compression)
+    pmaps_group = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
+    MKT         = partial(hdf5_file.create_table, pmaps_group)
+
+    s1    = MKT('S1'   , table_formats.S12   ,    "S1 Table", c)
+    s2    = MKT('S2'   , table_formats.S12   ,    "S2 Table", c)
+    s2si  = MKT('S2Si' , table_formats.S2Si  ,  "S2Si Table", c)
+    s1pmt = MKT('S1Pmt', table_formats.S12Pmt, "S1Pmt Table", c)
+    s2pmt = MKT('S2Pmt', table_formats.S12Pmt, "S2Pmt Table", c)
+
+    pmp_tables = s1, s2, s2si, s1pmt, s2pmt
+    for table in pmp_tables:
+        # Mark column to be indexed
+        table.set_attr('columns_to_index', ['event'])
+
+    return pmp_tables
+
+
 def load_pmaps(PMP_file_name):
     """Read the PMAP file and return transient PMAP rep."""
     s1t, s2t, s2sit = read_pmaps(PMP_file_name)
@@ -121,27 +145,3 @@ def read_run_and_event_from_pmaps_file(PMP_file_name):
 
         return (pd.DataFrame.from_records(run_t  .read()),
                 pd.DataFrame.from_records(event_t.read()))
-
-
-def pmap_writer(file, *, compression='ZLIB4'):
-    tables = _make_tables(file, compression)
-    return partial(store_pmap, tables)
-
-
-def _make_tables(hdf5_file, compression):
-    c = tbl.filters(compression)
-    pmaps_group = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
-    MKT         = partial(hdf5_file.create_table, pmaps_group)
-
-    s1    = MKT('S1'   , table_formats.S12   ,    "S1 Table", c)
-    s2    = MKT('S2'   , table_formats.S12   ,    "S2 Table", c)
-    s2si  = MKT('S2Si' , table_formats.S2Si  ,  "S2Si Table", c)
-    s1pmt = MKT('S1Pmt', table_formats.S12Pmt, "S1Pmt Table", c)
-    s2pmt = MKT('S2Pmt', table_formats.S12Pmt, "S2Pmt Table", c)
-
-    pmp_tables = s1, s2, s2si, s1pmt, s2pmt
-    for table in pmp_tables:
-        # Mark column to be indexed
-        table.set_attr('columns_to_index', ['event'])
-
-    return pmp_tables
