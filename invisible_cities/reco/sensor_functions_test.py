@@ -81,10 +81,10 @@ def test_sipm_noise_sampler(electron_MCRD_file):
         # signal in sipm with noise
         sipmrwf = e40rd.root.sipmrd[event] + noise_sampler.sample()
         # zs waveform
-        sipmzs = wfm.noise_suppression(sipmrwf, sipms_thresholds)
+        sipm_zs_wf = wfm.noise_suppression(sipmrwf, sipms_thresholds)
         n_sipm = 0
-        for j in range(sipmzs.shape[0]):
-            if np.sum(sipmzs[j] > 0):
+        for j in range(sipm_zs_wf.shape[0]):
+            if np.sum(sipm_zs_wf[j] > 0):
                 n_sipm+=1
         assert n_sipm < max_sipm_with_signal
 

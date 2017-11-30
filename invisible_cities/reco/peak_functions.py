@@ -29,7 +29,10 @@ def select_sipms_above_time_integrated_thr(sipm_wfs, thr):
     return selected_ids, selected_wfs
 
 
-def find_peaks(index, times, ccwf, time, length, stride, rebin_stride, Pk, sipmzs=None):
+def find_peaks(ccwf, index,
+               time, length,
+               stride, rebin_stride,
+               Pk, sipm_zs_wf=None):
     peaks   = []
     pmt_ids = np.arange(ccwf.shape[0])
     sipm_r  = None
@@ -44,7 +47,7 @@ def find_peaks(index, times, ccwf, time, length, stride, rebin_stride, Pk, sipmz
 
         if Pk is S2:
             sipm_bounds = tuple(i // rebin_stride for i in pmt_bounds)
-            sipm_wfs    = sipmzs[:, slice(*sipm_bounds)]
+            sipm_wfs    = sipm_zs_wf[:, slice(*sipm_bounds)]
             (sipm_ids,
              sipm_wfs)  = select_sipms_above_time_integrated_thr(sipm_wfs, thr_sipm_s2)
             sipm_r     = SiPMResponses(sipm_ids, sipm_wfs)

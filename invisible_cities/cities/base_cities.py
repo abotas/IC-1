@@ -577,7 +577,6 @@ class PmapCity(CalibratedCity):
         1. Deconvolve the raw waveforms (RWF) to obtain corrected waveforms (CWF)
         2. Computes the calibrated sum of the PMTs
         3. Finds the zero suppressed waveforms to search for s1 and s2
-
         """
 
         # deconvolve
@@ -596,8 +595,10 @@ class PmapCity(CalibratedCity):
                 CSum(csum = csum, csum_mau = csum_mau))
 
 
-    def pmaps(self, s1_indx, s2_indx, ccwf, csum, sipmzs):
-        return pmp.get_pmaps(s1_indx, s2_indx, ccwf, csum, sipmzs, s1_params, s2_params, thr_sipm_s2)
+    def pmap(self, ccwf, s1_indx, s2_indx, sipm_zs_wf):
+        return pf.get_pmap(ccwf, s1_indx, s2_indx, sipm_zs_wf,
+                           self.**s1_params._as_dict(),
+                           self.**s2_params._as_dict())
 
 
 class DstCity(City):

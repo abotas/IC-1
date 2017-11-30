@@ -77,12 +77,13 @@ class Irene(PmapCity):
                 continue
 
             # calibrated sum in SiPMs
-            sipmzs = self.calibrated_signal_sipm(sipmrwf[evt])
 
             # pmaps
             pmap = self.pmaps(s12sum.s1_indx, s12sum.s2_indx, cal_cwf.ccwf, calsum.csum, sipmzs)
 
             # write stuff
+            sipm_zs_wf       = self.calibrated_signal_sipm(sipmrwf[evt])
+            pmap             = self.pmap(cal_cwf.ccwf, s12sum.s1_indx, s12sum.s2_indx, sipm_zs_wf)
             event, timestamp = self.event_and_timestamp(evt, events_info)
             write.pmap         (event, *pmap)
             write.run_and_event(self.run_number, event, timestamp)

@@ -281,18 +281,18 @@ def test_copy_s2si_dict_deleting_keys_in_copy_does_not_affect_keys_in_original(K
 
 
 def test_get_pmap_functions_dont_crash_when_s2_is_None():
-    index  = np.array(    [] , dtype=np.int32)
-    csum   = np.ones(    100 , dtype=np.float64)
-    sipmzs = np.ones(    100 , dtype=np.float64)
-    ccwf   = np.ones((2, 100), dtype=np.float64) * 0.5
-    params = S12Params(time=minmax(min=0.0, max=644000.0),
-              stride=4,
-              length=minmax(min=4, max=16),
-              rebin_stride=1)
+    index       = np.array(    [] , dtype=np.int32)
+    csum        = np.ones(    100 , dtype=np.float64)
+    sipm_zs_wf  = np.ones(    100 , dtype=np.float64)
+    ccwf        = np.ones((2, 100), dtype=np.float64) * 0.5
+    params      = S12Params(time=minmax(min=0.0, max=644000.0),
+                            stride=4,
+                            length=minmax(min=4, max=16),
+                            rebin_stride=1)
     thr_sipm_s2 = 5
 
-    for s12 in get_pmaps(index, index, csum, sipmzs, params, params, thr_sipm_s2):
+    for s12 in get_pmaps(index, index, csum, sipm_zs_wf, params, params, thr_sipm_s2):
         assert s12 is None
 
-    for s12 in get_pmaps_with_ipmt(index, index, ccwf, csum, sipmzs, params, params, thr_sipm_s2):
+    for s12 in get_pmaps_with_ipmt(index, index, ccwf, csum, sipm_zs_wf, params, params, thr_sipm_s2):
         assert s12 is None
