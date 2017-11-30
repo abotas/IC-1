@@ -15,27 +15,8 @@ Last revised, Alejandro Botas, August, 2017.
 cimport numpy as np
 import  numpy as np
 
-from .. evm.pmaps import S1
-from .. evm.pmaps import S2
-from .. evm.pmaps import S2Si
-from .. evm.pmaps import S1Pmt
-from .. evm.pmaps import S2Pmt
-from .. core.exceptions import InitializedEmptyPmapObject
-
-cpdef integrate_sipm_charges_in_peak(s2si, int peak_number):
-    """Return arrays of nsipm and integrated charges from SiPM dictionary.
-
-    S2Si = {  peak : Si }
-      Si = { nsipm : [ q1, q2, ...] }
-
-    Returns (np.array[[nsipm_1 ,     nsipm_2, ...]],
-             np.array[[sum(q_1), sum(nsipm_2), ...]])
-    """
-
-    cdef long[:] sipms = np.asarray(tuple(s2si.sipm_total_energy_dict(peak_number).keys()))
-    cdef double[:] Qs    = np.array(tuple(s2si.sipm_total_energy_dict(peak_number).values()))
-    return np.asarray(sipms), np.asarray(Qs)
-
+from .. evm.new_pmaps import S1
+from .. evm.new_pmaps import S2
 
 cpdef df_to_s1_dict(df, int max_events=-1):
     """Takes a table with the persistent representation of pmaps
@@ -125,6 +106,7 @@ cpdef df_to_s2si_dict(dfs2, dfsi, int max_events=-1):
         except InitializedEmptyPmapObject: pass
 
     return s2si_dict
+
 
 cdef df_to_pmaps_dict(df, int max_events):
     """Takes a table with the persistent representation of pmaps
@@ -228,80 +210,3 @@ cdef df_to_s2sid_dict(df, int max_events):
                 current_peak[ID] = np.array(energy)
 
     return all_events
-
-
-cpdef sipm_ids_and_charges_in_slice(dict s2sid_peak, int slice_no):
-    """Given s2sid_peak = {nsipm : [ q1, q2, ...qn]} and a slice_no
-    (running from 1, 2..n) returns:
-    Returns (np.array[nsipm_1 , nsipm_2, ...],
-             np.array[q_k from nsipm_1, q_k from nsipm_2, ...]]) when slice_no=k
-    """
-
-    cdef int number_of_sipms = len(s2sid_peak.keys())
-    cdef list ids = []
-    cdef list qs_slice = []
-
-    cdef short int i, nsipm
-    for i, (nsipm, qs) in enumerate(s2sid_peak.items()):
-        if qs[slice_no] > 0:
-            ids.append(nsipm)
-            qs_slice.append(qs[slice_no])
-
-    return np.array(ids, dtype=np.int), np.array(qs_slice, dtype=np.double)
-
-
-cpdef _impose_thr_sipm_destructive(dict s2si_dict, float thr_sipm):
-    """imposes a thr_sipm on s2si_dict"""
-    cdef dict si_peak
-    cdef int sipm, i
-    cdef float q
-    for s2si in s2si_dict.values():                   # iter over events
-        for si_peak in s2si.s2sid.values():           # iter over peaks
-            for sipm in list(si_peak.keys()):         # iter over sipms ** avoid mod while iter
-                for i, q in enumerate(si_peak[sipm]): # iter over timebins
-                    if q < thr_sipm:                  # impose threshold
-                        si_peak[sipm][i] = 0
-                if si_peak[sipm].sum() == 0:          # Delete SiPMs with integral
-                    del si_peak[sipm]                 # charge equal to 0
-    return s2si_dict
-
-
-cpdef _impose_thr_sipm_s2_destructive(dict s2si_dict, float thr_sipm_s2):
-    """imposes a thr_sipm_s2 on s2si_dict. deletes keys (sipms) from each s2sid peak if sipm
-       integral charge is less than thr_sipm_s2"""
-    cdef dict si_peak
-    cdef int sipm
-    cdef np.ndarray qs
-    for s2si in s2si_dict.values():
-        for si_peak in s2si.s2sid.values():
-            for sipm, qs in list(si_peak.items()): # ** avoid modifying while iterating
-                sipm_integral_charge = qs.sum()
-                if sipm_integral_charge < thr_sipm_s2:
-                    del si_peak[sipm]
-    return s2si_dict
-
-
-cpdef _delete_empty_s2si_peaks(dict s2si_dict):
-    """makes sure there are no empty peaks stored in an s2sid
-        (s2sid[pn] != {} for all pn in s2sid and all s2sid in s2si_dict)
-        ** Also deletes corresponding peak in s2si.s2d! """
-    cdef int ev, pn
-    for ev in list(s2si_dict.keys()):
-        for pn in list(s2si_dict[ev].s2sid.keys()):
-            if len(s2si_dict[ev].s2sid[pn]) == 0:
-                del s2si_dict[ev].s2sid[pn]
-                del s2si_dict[ev].s2d  [pn]
-                # It is not sufficient to just delete the peaks because the S2Si class instance
-                # will still think it has peak pn even though its base dictionary does not
-                try: s2si_dict[ev] = S2Si(s2si_dict[ev].s2d, s2si_dict[ev].s2sid)
-                except InitializedEmptyPmapObject: del s2si_dict[ev]
-    return s2si_dict
-
-
-cpdef _delete_empty_s2si_dict_events(dict s2si_dict):
-    """ delete all events from s2si_dict with empty s2sid"""
-    cdef int ev
-    for ev in list(s2si_dict.keys()):
-        if len(s2si_dict[ev].s2sid) == 0:
-            del s2si_dict[ev]
-    return s2si_dict

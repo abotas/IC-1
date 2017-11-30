@@ -8,67 +8,25 @@ Last revised, JJGC, July, 2017.
 
 """
 import copy
-import numpy  as     np
+import numpy  as    np
+from .. reco import peak_functions_c  as  pf
 from .. reco import peak_functions_c  as cpf
 from .. reco import pmaps_functions_c as pmpc
 from .. core import core_functions_c  as ccf
 from .. core.system_of_units_c      import units
 from .. core.exceptions             import NegativeThresholdNotAllowed
-from .. evm.pmaps                   import S2, S2Si, Peak
+from .. evm.new_pmaps               import S1
+from .. evm.new_pmaps               import S2
+from .. evm.new_pmaps               import PMap
 
 from typing import Dict
 
 
-def get_pmaps(s1_indx, s2_indx, csum, sipmzs, s1_params, s2_params, thr_sipm_s2):
-    """Computes s1, s2 and s2si objects (PMAPS)"""
-    s1 = cpf.find_s1(csum, s1_indx, **s1_params._asdict())
-    s2 = cpf.find_s2(csum, s2_indx, **s2_params._asdict())
-    s2si = cpf.find_s2si(sipmzs, s2.s2d, thr = thr_sipm_s2) if s2 is not None else None
-    return s1, s2, s2si
-
-
-def get_pmaps_with_ipmt(s1_indx, s2_indx, ccwf, csum, sipmzs, s1_params, s2_params, thr_sipm_s2):
+def get_pmap(s1_indx, s2_indx, ccwf, csum, sipmzs, s1_params, s2_params, thr_sipm_s2):
     """Computes s1, s2, s2si, s1pmt and s2pmt objects"""
-    s1, s1pmt = cpf.find_s1_ipmt(ccwf, csum, s1_indx, **s1_params._asdict())
-    s2, s2pmt = cpf.find_s2_ipmt(ccwf, csum, s2_indx, **s2_params._asdict())
-    s2si      = cpf.find_s2si(sipmzs, s2.s2d, thr = thr_sipm_s2) if s2 is not None else None
-    return s1, s2, s2si, s1pmt, s2pmt
-
-
-def _integrate_sipm_charges_in_peak_as_dict(s2si):
-    """Return dict of integrated charges from a SiPM dictionary.
-
-    S2Si = {  peak : Si }
-      Si = { nsipm : [ q1, q2, ...] }
-
-    Returns an integrated Si = { nsipm : sum(q_n) }
-    """
-    return { sipm : sum(qs) for (sipm, qs) in s2si.items() }
-
-
-def _integrate_sipm_charges_in_peak(s2si):
-    """Return arrays of nsipm and integrated charges from SiPM dictionary.
-
-    S2Si = {  peak : Si }
-      Si = { nsipm : [ q1, q2, ...] }
-
-    Returns (np.array[[nsipm_1 ,     nsipm_2, ...]],
-             np.array[[sum(q_1), sum(nsipm_2), ...]])
-    """
-    sipms_and_Q_totals = _integrate_sipm_charges_in_peak_as_dict(s2si)
-    sipms = np.array(tuple(sipms_and_Q_totals.keys()))
-    Qs    = np.array(tuple(sipms_and_Q_totals.values()))
-    return sipms, Qs
-
-
-def _integrate_S2Si_charge(s2sid):
-    """Return s2Si containing integrated charges.
-
-    s2sid = { peak_no : {nsipm : [ q1, q2, ...]} }
-    Returns s2sid where s2sid = {peak_no: { nsipm : sum([q1, q2, ...])} }
-    """
-    return { peak_no : _integrate_sipm_charges_in_peak_as_dict(peak)
-             for (peak_no, peak) in s2sid.items() }
+    s1s = pf.find_peaks(ccwf, csum, s1_indx, S1,                **s1_params._asdict())
+    s2s = pf.find_peaks(ccwf, csum, s2_indx, S2, sipmzs=sipmzs, **s2_params._asdict())
+    return PMap(s1s, s2s)
 
 
 def rebin_s2si(s2, s2si, rf):
@@ -84,7 +42,6 @@ def rebin_s2si(s2, s2si, rf):
             t, e, _ = rebin_s2si_peak(s2.peaks[pn].t, s2.peaks[pn].E, {}, rf)
 
         s2d_rebin[pn] = [t, e]
-
 
     return S2(s2d_rebin), S2Si(s2d_rebin, s2sid_rebin)
 
@@ -137,10 +94,3 @@ def raise_s2si_thresholds(s2si_dict_original: Dict[int, S2Si],
         s2si_dict  = pmpc._delete_empty_s2si_peaks      (s2si_dict)
         s2si_dict  = pmpc._delete_empty_s2si_dict_events(s2si_dict)
     return s2si_dict
-
-
-# def select_si_slice(si, slice_no):
-#     # This is a temporary fix! The number of slices in the SiPM arrays
-#     # must match that of the PMT PMaps.
-#     return {sipm_no: (sipm[slice_no] if len(sipm) > slice_no else 0)
-#                       for sipm_no, sipm in si.items()}
