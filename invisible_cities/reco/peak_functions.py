@@ -47,7 +47,7 @@ def find_peaks(index, times, ccwf, time, length, stride, rebin_stride, Pk, sipmz
             sipm_wfs    = sipmzs[:, slice(*sipm_bounds)]
             (sipm_ids,
              sipm_wfs)  = select_sipms_above_time_integrated_thr(sipm_wfs, thr_sipm_s2)
-             sipm_r     = SiPMResponses(sipm_ids, sipm_wfs)
+            sipm_r     = SiPMResponses(sipm_ids, sipm_wfs)
 
         pk = Pk(pk_times, pmt_r, sipm_r)
         peaks.append(pk)

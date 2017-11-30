@@ -10,14 +10,8 @@ cimport numpy as np
 import  numpy as np
 from scipy import signal
 
-from .. evm.pmaps import S1
-from .. evm.pmaps import S2
-from .. evm.pmaps import S2Si
-from .. evm.pmaps import S1Pmt
-from .. evm.pmaps import S2Pmt
-
-from .. core.exceptions        import InitializedEmptyPmapObject
 from .. core.system_of_units_c import units
+
 
 cpdef calibrated_pmt_sum(double [:, :]  CWF,
                          double [:]     adc_to_pes,
@@ -213,23 +207,28 @@ cpdef find_peaks(int [:] index, time, length, int stride=4):
     return _select_peaks_of_allowed_length(peak_bounds, length)
 
 
-cpdef rebin_responses(double[:] times, double[:, :] waveforms, int rebin_stride):
+cpdef rebin_responses(np.ndarray[np.float32_t, ndim=1] times,
+                      np.ndarray[np.float32_t, ndim=2] waveforms,
+                      int                              rebin_stride):
+
     if rebin_stride < 2: return times, waveforms
 
-    int number_of_bins = np.ceil(len(times) // rebin_stride).astype(int)
+    cdef int n_bins    = np.ceil(len(times) // rebin_stride).astype(int)
+    cdef int n_sensors = waveforms.shape[0]
 
-    double [:]    rebinned_times
-    double [:, :] rebinned_wfs
-    double [:]    t
-    double [:]    e
+    cdef np.ndarray[np.float32_t, ndim=1] rebinned_times = np.zeros(            n_bins , dtype=np.float32)
+    cdef np.ndarray[np.float32_t, ndim=2] rebinned_wfs   = np.zeros((n_sensors, n_bins), dtype=np.float32)
 
-    for i in range(number_of_bins):
+    cdef double [:] t
+    cdef double [:] e
+
+    for i in range(n_bins):
         s  = slice(rebin_stride * i, rebin_stride * (i + 1))
         t  = times    [   s]
         e  = waveforms[:, s]
         rebinned_times[   i] = np.average(t, weights=e)
         rebinned_wfs  [:, i] = np.sum    (e,    axis=1)
-    return rebinned_times, rebinned_wfs
+    return np.asarray(rebinned_times), np.asarray(rebinned_wfs)
 
 
 cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,

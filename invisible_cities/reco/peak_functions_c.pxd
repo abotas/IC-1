@@ -26,12 +26,6 @@ assumed to be index*25ns in time_from_index function
 cpdef find_peaks(int [:] index, time, length, int stride=*)
 
 
-"""
-given a waveform a a dictionary mapping peak_no to the indices in the waveform corresponding
-to that peak, return an S12L
-"""
-cpdef extract_peaks_from_waveform(double [:] wf, dict peak_bounds, int rebin_stride=*)
-
 
 """
 computes the ZS calibrated sum of the PMTs
@@ -90,42 +84,6 @@ returns the times (in ns) corresponding to the indexes in indx
 cpdef _time_from_index(int [:] indx)
 
 
-cpdef find_s1(double [:] csum, int [:] index, time, length, int stride=*, int rebin_stride=*)
-
-
-"""find s1 peaks and return s1 and s1pmt objects"""
-cpdef find_s1_ipmt(double [:,:] ccwf, double [:] csum, int [:] index, time, length,
-    int stride=*,
-    int rebin_stride=*)
-
-
-cpdef find_s2(double [:] csum,  int [:] index, time, length, int stride=*, int rebin_stride=*)
-
-
-"""find s2 peaks and return s2 and s2pmt objects"""
-cpdef find_s2_ipmt(double [:,:] ccwf, double [:] csum, int [:] index, time, length,
-    int stride=*,
-    int rebin_stride=*)
-
-
-cpdef find_s2si(double [:, :] sipmzs, dict s2d, double thr)
-
-
-cpdef find_s12(double [:] csum, int [:] index, time, length, int stride, int rebin_stride)
-
-
-cpdef correct_s1_ene(dict s1d, np.ndarray csum)
-
-
-"""
-rebins  a waveform according to stride
-The input waveform is a vector such that the index expresses time bin and the
-contents expresses energy (e.g, in pes)
-The function returns a rebinned vector of T and E.
-"""
-cpdef rebin_waveform(int ts, int t_finish, double[:] wf, int stride=*)
-
-
 """
 subtracts the baseline
 Uses a MAU to set the signal threshold (thr, in PES)
@@ -135,48 +93,7 @@ cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
                   double [:] adc_to_pes, thr,
                   int n_MAU=*)
 
-"""
-Selects the SiPMs with signal
-and returns a dictionary:
-input: sipmzs[i,k], where:
-       i: runs over number of SiPms (with signal)
-       k: runs over waveform.
-       sipmzs[i,k] only includes samples above
-       threshold (e.g, dark current threshold)
-returns {j: [i, sipmzs[i]]}, where:
-       j: enumerates sipms with psum >0
-       i: sipm ID
-"""
 
-#\cpdef select_sipm(double [:, :] sipmzs)
-
-"""Given a dict with SIPMs (energies above threshold),
-return a dict of np arrays, where the key is the sipm
-with signal.
-
-input {j: [i, sipmzs[i]]}, where:
-       j: enumerates sipms with psum >0
-       i: sipm ID
-      S2d defining an S2 signal
-
-returns:
-      {i, sipm_i[i0:i1]} where:
-      i: sipm ID
-      sipm_i[i0:i1] waveform corresponding to SiPm i between:
-      i0: min index of S2d
-      i1: max index of S2d
-      only IF the total energy of SiPM is above thr
-
-"""
-#cpdef sipm_s2(dict dSIPM, dict S2, double thr)
-
-
-"""Given a vector with SIPMs (energies above threshold), and a
-dictionary of S2s, S2d, returns a dictionary of SiPMs-S2.  Each
-index of the dictionary correspond to one S2 and is a list of np
-arrays. Each element of the list is the S2 window in the SiPM (if
-not zero)
-
-"""
-#cpdef sipm_s2_dict(dict dSIPM, dict S2d, double thr)
-#cpdef sipm_s2_dict(double [:, :] sipmzs, dict S2d, double thr)
+cpdef rebin_responses(np.ndarray[np.float32_t, ndim=1] times,
+                      np.ndarray[np.float32_t, ndim=2] waveforms,
+                      int                              rebin_stride)
