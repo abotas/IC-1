@@ -1,3 +1,5 @@
+from functools import partial
+
 import tables as tb
 import pandas as pd
 
@@ -44,14 +46,6 @@ def store_peak(pmt_table, pmti_table, si_table, peak, peak_number, event_number,
             si_row['nsipm'] = sipm_id
             si_row['ene'  ] = peak.sipms.waveform(sipm_id)[i]
             si_row.append()
-
-
-
-def s1_s2_si_from_pmaps(s1_dict, s2_dict, s2si_dict, evt_number):
-    s1 = s1_dict  .get(evt_number, None)
-    s2 = s2_dict  .get(evt_number, None)
-    s2si = s2si_dict.get(evt_number, None)
-    return s1, s2, s2si
 
 
 def load_pmaps(PMP_file_name):
@@ -130,60 +124,24 @@ def read_run_and_event_from_pmaps_file(PMP_file_name):
 
 
 def pmap_writer(file, *, compression='ZLIB4'):
-    pmp_tables = _make_pmp_tables(file, compression)
-    def write_pmap(event_number, s1, s2, s2si):
-        if s1   is not None: s1  .store(pmp_tables[0], event_number)
-        if s2   is not None: s2  .store(pmp_tables[1], event_number)
-        if s2si is not None: s2si.store(pmp_tables[2], event_number)
-
-    return write_pmap
+    tables = _make_tables(file, compression)
+    return partial(store_pmap, tables)
 
 
-def ipmt_pmap_writer(file, *, compression='ZLIB4'):
-    ipmt_tables = _make_ipmt_pmp_tables(file, compression)
-    def write_ipmt_pmap(event_number, s1pmt, s2pmt):
-        if s1pmt is not None: s1pmt.store(ipmt_tables[0], event_number)
-        if s2pmt is not None: s2pmt.store(ipmt_tables[1], event_number)
-    return write_ipmt_pmap
-
-
-def pmap_writer_and_ipmt_writer(file, *, compression='ZLIB4'):
-    write_pmap      =      pmap_writer(file, compression=compression)
-    write_ipmt_pmap = ipmt_pmap_writer(file, compression=compression)
-    def write_pmap_extended(event_number, s1, s2, s2si, s1pmt, s2pmt):
-        write_pmap     (event_number, s1, s2, s2si)
-        write_ipmt_pmap(event_number, s1pmt, s2pmt)
-    return write_pmap_extended
-
-
-def _make_pmp_tables(hdf5_file, compression):
+def _make_tables(hdf5_file, compression):
     c = tbl.filters(compression)
-    pmaps_group  = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
-    MKT = hdf5_file.create_table
-    s1         = MKT(pmaps_group, 'S1'  , table_formats.S12 ,   "S1 Table", c)
-    s2         = MKT(pmaps_group, 'S2'  , table_formats.S12 ,   "S2 Table", c)
-    s2si       = MKT(pmaps_group, 'S2Si', table_formats.S2Si, "S2Si Table", c)
-    pmp_tables = (s1, s2, s2si)
+    pmaps_group = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
+    MKT         = partial(hdf5_file.create_table, pmaps_group)
+
+    s1    = MKT('S1'   , table_formats.S12   ,    "S1 Table", c)
+    s2    = MKT('S2'   , table_formats.S12   ,    "S2 Table", c)
+    s2si  = MKT('S2Si' , table_formats.S2Si  ,  "S2Si Table", c)
+    s1pmt = MKT('S1Pmt', table_formats.S12Pmt, "S1Pmt Table", c)
+    s2pmt = MKT('S2Pmt', table_formats.S12Pmt, "S2Pmt Table", c)
+
+    pmp_tables = s1, s2, s2si, s1pmt, s2pmt
     for table in pmp_tables:
         # Mark column to be indexed
         table.set_attr('columns_to_index', ['event'])
 
-
     return pmp_tables
-
-
-def _make_ipmt_pmp_tables(hdf5_file, compression):
-    c = tbl.filters(compression)
-    if 'PMAPS' in hdf5_file.root._v_children:
-        ipmt_pmaps_group = hdf5_file.root.PMAPS
-    else:
-        ipmt_pmaps_group = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
-
-    MKT   = hdf5_file.create_table
-    s1pmt = MKT(ipmt_pmaps_group, 'S1Pmt', table_formats.S12Pmt,   "S1Pmt Table", c)
-    s2pmt = MKT(ipmt_pmaps_group, 'S2Pmt', table_formats.S12Pmt,   "S2Pmt Table", c)
-    ipmt_tables = (s1pmt, s2pmt)
-    for table in ipmt_tables:
-        # Mark column to be indexed
-        table.set_attr('columns_to_index', ['event'])
-    return ipmt_tables
