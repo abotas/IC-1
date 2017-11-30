@@ -3,14 +3,8 @@ from functools import partial
 import tables as tb
 import pandas as pd
 
-from .. evm import nh5           as table_formats
-from .. reco import tbl_functions as tbl
-#from .. reco.pmaps_functions_c      import df_to_pmaps_dict
-from .. reco.pmaps_functions_c      import df_to_s1_dict
-from .. reco.pmaps_functions_c      import df_to_s2_dict
-from .. reco.pmaps_functions_c      import df_to_s2si_dict
-from .. reco.pmaps_functions_c      import df_to_s1pmt_dict
-from .. reco.pmaps_functions_c      import df_to_s2pmt_dict
+from .. evm                import nh5     as table_formats
+from .. reco.tbl_functions import filters as tbl_filters
 
 
 def store_peak(pmt_table, pmti_table, si_table,
@@ -57,7 +51,7 @@ def pmap_writer(file, *, compression='ZLIB4'):
 
 
 def _make_tables(hdf5_file, compression):
-    c = tbl.filters(compression)
+    c = tbl_filters(compression)
     pmaps_group = hdf5_file.create_group(hdf5_file.root, 'PMAPS')
     MKT         = partial(hdf5_file.create_table, pmaps_group)
 
