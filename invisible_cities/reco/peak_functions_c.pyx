@@ -213,7 +213,9 @@ cpdef find_peaks(int [:] index, time, length, int stride=4):
     return _select_peaks_of_allowed_length(peak_bounds, length)
 
 
-cpdef rebin_responses(double[:] times, double[:, :] pmt_wfs, int rebin_stride):
+cpdef rebin_responses(double[:] times, double[:, :] waveforms, int rebin_stride):
+    if rebin_stride < 2: return times, waveforms
+
     int number_of_bins = np.ceil(len(times) // rebin_stride).astype(int)
 
     double [:]    rebinned_times
@@ -223,72 +225,11 @@ cpdef rebin_responses(double[:] times, double[:, :] pmt_wfs, int rebin_stride):
 
     for i in range(number_of_bins):
         s  = slice(rebin_stride * i, rebin_stride * (i + 1))
-        t  = times[s]
-        e  = pmt_wfs[:, s]
-        rebinned_times[i]    = np.average(t, weights=e)
-        rebinned_wfs  [:, i] = np.sum(e, axis=1)
+        t  = times    [   s]
+        e  = waveforms[:, s]
+        rebinned_times[   i] = np.average(t, weights=e)
+        rebinned_wfs  [:, i] = np.sum    (e,    axis=1)
     return rebinned_times, rebinned_wfs
-
-
-cpdef filter_out_empty_sipms(double[:, :] sipm_wfs, double thr):
-    cdef int   [:]    selected_ids
-    cdef double[:, :] selected_wfs
-
-    selected_ids = np.where(sipm_wfs.sum(axis=1) >= thr)[0]
-    selected_wfs = sipm_wfs[selected_ids]
-    return selected_ids, selected_wfs
-
-
-cpdef find_s1s(int   [:]    index,
-               double[:]    times,
-               double[:, :] ccwf,
-               time, length,
-               int stride):
-    cdef double [:]    pk_times
-    cdef double [:, :] pmt_wfs
-    cdef list          peaks   = []
-    cdef int    [:]    pmt_ids = np.arange(ccwf.shape[0])
-
-    s1_peaks = find_peaks(index, time, length, stride)
-    for peak_no, pmt_indices in s1_peaks.items():
-        pk_times = times[   slice(*pmt_indices)]
-        pmt_wfs  = ccwf [:, slice(*pmt_indices)]
-        pmt_r    = PMTResponse(pmt_ids, pmt_wfs)
-        pk       = S1(pk_times, pmt_r, empty_sipm_response)
-        peaks.append(pk)
-    return peaks
-
-
-cpdef find_s2s(int   [:]    index,
-               double[:]    times,
-               double[:, :] ccwf,
-               double[:, :] sipmzs,
-               time, length,
-               int stride,
-               int rebin_stride):
-    cdef double [:]    pk_times
-    cdef double [:, :] pmt_wfs
-    cdef list          peaks   = []
-    cdef int    [:]    pmt_ids = np.arange(ccwf.shape[0])
-
-    s2_peaks = find_peaks(index, time, length, stride)
-    for peak_no, pmt_indices in s2_peaks.items():
-        pk_times = times[   slice(*pmt_indices)]
-        pmt_wfs  = ccwf [:, slice(*pmt_indices)]
-
-        (pk_times,
-         pmt_wfs) = rebin_responses(pk_times, pmt_wfs, rebin_stride)
-
-        sipm_indices = tuple(i // rebin_stride for i in pmt_indices)
-        sipm_wfs     = sipmzs[:, slice(*sipm_indices)]
-        (sipm_ids,
-         sipm_wfs)   = filter_out_empty_sipms(sipm_wfs, thr_sipm_s2)
-
-        pmt_r  =  PMTResponses( pmt_ids,  pmt_wfs)
-        sipm_r = SiPMResponses(sipm_ids, sipm_wfs)
-        pk     = S2(pk_times, pmt_r, sipm_r)
-        peaks.append(pk)
-    return peaks
 
 
 cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
@@ -338,28 +279,3 @@ cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
                 siwf[j,k] = SiWF[j,k] / adc_to_pes[j]
 
     return np.asarray(siwf)
-
-
-cpdef select_sipm(double [:, :] sipmzs, double eps=1e-3):
-    """
-    Selects the SiPMs with signal
-    and returns a dictionary:
-    input: sipmzs[i,k], where:
-           i: runs over number of SiPms (with signal)
-           k: runs over waveform.
-
-           sipmzs[i,k] only includes samples above
-           threshold (e.g, dark current threshold)
-
-    returns {j: [i, sipmzs[i]]}, where:
-           j: enumerates sipms with psum >0
-           i: sipm ID
-    """
-    cdef int NSIPM = sipmzs.shape[0]
-    cdef int NWFM = sipmzs.shape[1]
-    cdef dict SIPM = {}
-    cdef int i, j, k
-    cdef double psum
-
-    selected_ids, selected_wfs = filter_out_empty_sipms(sipmzs, eps)
-    return dict(zip(selected_ids, selected_wfs))
