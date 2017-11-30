@@ -114,8 +114,7 @@ class Irene(PmapCity):
         writers = Namespace(
         run_and_event =        run_and_event_writer(h5out),
         mc            =             mc_track_writer(h5out) if self.monte_carlo else None,
-        pmap          = pmap_writer_and_ipmt_writer(h5out) if self.compute_ipmt_pmaps \
-                                   else pmap_writer(h5out),
+        pmap          =                 pmap_writer(h5out),
         )
         return writers
 
