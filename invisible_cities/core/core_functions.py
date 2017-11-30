@@ -7,8 +7,8 @@ import time
 
 from typing import Sequence
 
-def merge_two_dicts(a,b):
-    return {**a, **b}
+def do_nothing(*args, **kwargs):
+    pass
 
 
 def timefunc(f):
