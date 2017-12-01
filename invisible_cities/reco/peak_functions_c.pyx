@@ -107,44 +107,6 @@ cpdef calibrated_pmt_mau(double [:, :]  CWF,
     return np.asarray(pmt_thr), np.asarray(pmt_thr_mau)
 
 
-cpdef wfzs(double [:] wf, double threshold=0):
-    """
-    takes a waveform wf and returns the values of the wf above threshold:
-    if the input waveform is of the form [e1,e2,...en],
-    where ei is the energy of sample i,
-    then then the algorithm returns a vector [e1,e2...ek],
-    where k <=n and ei > threshold and
-    a vector of indexes [i1,i2...ik] which label the position
-    of the zswf of [e1,e2...ek]
-    For example if the input waveform is:
-    [1,2,3,5,7,8,9,9,10,9,8,5,7,5,6,4,1] and the trhesold is 5
-    then the algoritm returns
-    a vector of amplitudes [7,8,9,9,10,9,8,7,6] and a vector of indexes
-    [4,5,6,7,8,9,10,12,14]
-
-    """
-    cdef int len_wf = wf.shape[0]
-    cdef double [:] wfzs_e = np.zeros(len_wf, dtype=np.double)
-    cdef int    [:] wfzs_i = np.zeros(len_wf, dtype=np.int32)
-
-    cdef int i,j
-    j = 0
-    for i in range(len_wf):
-        if wf[i] > threshold:
-            wfzs_e[j] = wf[i]
-            wfzs_i[j] =    i
-            j += 1
-
-    cdef double [:] wfzs_ene  = np.zeros(j, dtype=np.double)
-    cdef int    [:] wfzs_indx = np.zeros(j, dtype=np.int32)
-
-    for i in range(j):
-        wfzs_ene [i] = wfzs_e[i]
-        wfzs_indx[i] = wfzs_i[i]
-
-    return np.asarray(wfzs_ene), np.asarray(wfzs_indx)
-
-
 cpdef _time_from_index(int [:] indx):
     """
     returns the times (in ns) corresponding to the indexes in indx

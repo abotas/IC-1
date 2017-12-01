@@ -20,6 +20,12 @@ from .. evm .new_pmaps       import SiPMResponses
 from .                       import peak_functions_c as cpf
 
 
+def indices_and_wf_above_threshold(wf, thr):
+    indices_above_thr = np.where(wf >= thr)[0]
+    wf_above_thr      = wf[indices_above_thr]
+    return indices_above_thr, wf_above_thr
+
+
 def select_sipms_above_time_integrated_thr(sipm_wfs, thr):
     selected_ids = np.where(sipm_wfs.sum(axis=1) >= thr)[0]
     selected_wfs = sipm_wfs[selected_ids]
