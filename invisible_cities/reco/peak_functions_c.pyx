@@ -27,7 +27,6 @@ cpdef calibrated_pmt_sum(double [:, :]  CWF,
     pmt_active: a list of active PMTs
     n_MAU:  length of the MAU window
     thr_MAU: treshold above MAU to select sample
-
     """
 
     cdef int j, k
@@ -76,7 +75,6 @@ cpdef calibrated_pmt_mau(double [:, :]  CWF,
     list: list of active PMTs
     n_MAU:  length of the MAU window
     thr_MAU: treshold above MAU to select sample
-
     """
 
     cdef int j, k
