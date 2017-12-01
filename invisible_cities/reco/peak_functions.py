@@ -1,14 +1,11 @@
 """
 code: peak_functions.py
-description: peak finding functions. Most of the functions
-are private and used only for testing (e.g, comparison with the
-corresponding cython functions). Private functions are labelled _function_name
-the corresponding public function (to be found in the cython module)
-is labelled function_name.
+
+description: functions related to the pmap creation.
 
 credits: see ic_authors_and_legal.rst in /doc
 
-last revised: JJGC, 10-July-2017
+last revised: @abotas & @gonzaponte. Dec 1st 2017
 """
 
 
