@@ -10,11 +10,7 @@ from hypothesis.strategies  import composite
 from hypothesis.extra.numpy import arrays
 
 from .. core.core_functions import weighted_mean_and_std
-from .. core.exceptions     import InconsistentS12dIpmtd
-from .. core.exceptions     import InitializedEmptyPmapObject
 
-from .. reco.pmaps_functions_c import integrate_sipm_charges_in_peak
-from .. reco  import pmaps_functions as pmapf
 from .  pmaps import S1
 from .  pmaps import S2
 from .  pmaps import S12
@@ -23,7 +19,6 @@ from .  pmaps import S12Pmt
 from .  pmaps import S1Pmt
 from .  pmaps import S2Pmt
 from .  pmaps import Peak
-from .  pmaps import check_s2d_and_s2sid_share_peaks
 from .. core.core_functions    import loc_elem_1d
 
 

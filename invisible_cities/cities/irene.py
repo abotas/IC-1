@@ -18,7 +18,6 @@ from .. core.core_functions    import do_nothing
 
 from .. io.mc_io               import mc_track_writer
 from .. io.pmap_io             import pmap_writer
-from .. io.pmap_io             import pmap_writer_and_ipmt_writer
 from .. io.run_and_event_io    import run_and_event_writer
 from .. reco                   import tbl_functions as tbl
 from .. evm.ic_containers      import S12Params as S12P
@@ -109,7 +108,7 @@ class Irene(PmapCity):
     def get_writers(self, h5out):
         writers = Namespace(
         run_and_event = run_and_event_writer(h5out),
-        mc            =      mc_track_writer(h5out) if self.monte_carlo else do_nothing
+        mc            =      mc_track_writer(h5out) if self.monte_carlo else do_nothing,
         pmap          =          pmap_writer(h5out),
         )
         return writers

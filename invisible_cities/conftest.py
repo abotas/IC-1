@@ -6,12 +6,10 @@ from pandas      import DataFrame
 from pandas      import Series
 from collections import namedtuple
 
-from . io.pmap_io   import df_to_s1_dict
-from . io.pmap_io   import df_to_s2_dict
-from . io.pmap_io   import df_to_s2si_dict
+from . io.pmap_io   import s1s_from_df
+from . io.pmap_io   import s2s_from_df
 from . io.pmap_io   import load_pmaps_as_df
 from . io.pmap_io   import load_pmaps
-from . io.pmap_io   import load_pmaps_with_ipmt
 from . io. dst_io   import load_dst
 from . io.hits_io   import load_hits
 from . io.hits_io   import load_hits_skipping_NN
@@ -321,7 +319,7 @@ def KrMC_hdst(ICDIR):
               1.47104004e+02,  1.50782271e+02,  1.35000000e+02,  1.47748654e+02,  1.48782929e+02,
               0.00000000e+00,  0.00000000e+00,  7.20626968e+01,  7.19827231e+01,  7.17844856e+01,
               7.35674548e+01,  0.00000000e+00,  0.00000000e+00, -7.83527723e+01, -7.78888272e+01,
-             -7.75947914e+01, -7.69924054e+01,  0.00000000e+0] 
+             -7.75947914e+01, -7.69924054e+01,  0.00000000e+0]
 
     Xrms  = [ 0.00000000e+00,  4.99964935e+00,  6.16285499e+00,  6.39776071e+00,  4.73166675e+00,
               0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  4.99915988e+00,  4.99213896e+00,

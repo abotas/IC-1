@@ -37,8 +37,6 @@ from .. reco                    import peak_functions_c  as cpf
 from .. reco                    import paolina_functions as paf
 from .. reco                    import sensor_functions  as sf
 from .. reco                    import peak_functions    as pf
-from .. reco                    import pmaps_functions   as pmp
-from .. reco                    import pmaps_functions_c as cpmp
 from .. reco                    import tbl_functions     as tbl
 from .. reco.sensor_functions   import convert_channel_id_to_IC_id
 from .. reco.xy_algorithms      import corona
@@ -597,8 +595,8 @@ class PmapCity(CalibratedCity):
 
     def pmap(self, ccwf, s1_indx, s2_indx, sipm_zs_wf):
         return pf.get_pmap(ccwf, s1_indx, s2_indx, sipm_zs_wf,
-                           self.**s1_params._as_dict(),
-                           self.**s2_params._as_dict())
+                           **self.s1_params._as_dict(),
+                           **self.s2_params._as_dict())
 
 
 class DstCity(City):
@@ -763,14 +761,15 @@ class KrCity(PCity):
 
     parameters = tuple("lm_radius new_lm_radius msipm qlm qthr".split())
 
-    def compute_xy_position(self, s2si, peak_no):
+    def compute_xy_position(self, sipm_r):
         """
         Computes position using the integral of the charge
         in each SiPM.
         """
-        IDs, Qs = cpmp.integrate_sipm_charges_in_peak(s2si, peak_no)
-        xs, ys   = self.xs[IDs], self.ys[IDs]
-        return corona(np.stack((xs, ys), axis=1), Qs,
+        ids = sipm_r.ids
+        qs  = sipm_r.sum_over_times
+        xs, ys   = self.xs[ids], self.ys[ids]
+        return corona(np.stack((xs, ys), axis=1), qs,
                       Qthr           =  self.conf.qthr,
                       Qlm            =  self.conf.qlm,
                       lm_radius      =  self.conf.lm_radius,
@@ -883,10 +882,11 @@ class HitCity(KrCity):
         super().__init__(**kwds)
         self.rebin  = self.conf.rebin
 
-    def compute_xy_position(self, s2sid_peak, slice_no):
+    def compute_xy_position(sipm_r):
         """Compute x-y position for each time slice. """
-        IDs, Qs  = cpmp.sipm_ids_and_charges_in_slice(s2sid_peak, slice_no)
-        xs, ys   = self.xs[IDs], self.ys[IDs]
+        ids = sipm_r.ids
+        qs  = sipm_r.sum_over_times
+        xs, ys   = self.xs[ids], self.ys[ids]
 
         return corona(np.stack((xs, ys), axis=1), Qs,
                       Qthr           =  self.conf.qthr,
@@ -894,12 +894,6 @@ class HitCity(KrCity):
                       lm_radius      =  self.conf.lm_radius,
                       new_lm_radius  =  self.conf.new_lm_radius,
                       msipm          =  self.conf.msipm)
-
-    def rebin_s2si(self, s2, s2si, rebin):
-        """rebins s2d and sid dictionaries"""
-        if rebin > 1:
-            s2, s2si = pmp.rebin_s2si(s2, s2si, rebin)
-        return s2, s2si
 
     def split_energy(self, e, clusters):
         if len(clusters) == 1:
@@ -933,7 +927,7 @@ class HitCity(KrCity):
         # in general one rebins the time slices wrt the time slices
         # produces by pmaps. This is controlled by self.rebin which can
         # be set by parameter to a factor x pmaps-rebin.
-        s2, s2si = self.rebin_s2si(s2, s2si, self.rebin)
+        s2 = s2.rebin(self.rebin)
 
         # here hits are computed for each peak and each slice.
         # In case of an exception, a hit is still created with a NN cluster.
@@ -1021,7 +1015,7 @@ class TriggerEmulationCity(PmapCity):
             # Emulate peak search (s2) in the FPGA
             s2 = find_peaks(cwf, wfm_index,
                             Pk=S2, sipm_zs_wf=None,
-                            **self.s2_params._asdict()):
+                            **self.s2_params._asdict())
             peak_data[pmt_id] = s2
 
         return peak_data

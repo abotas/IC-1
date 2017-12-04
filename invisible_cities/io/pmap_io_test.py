@@ -14,11 +14,7 @@ from hypothesis.strategies import integers
 from . run_and_event_io    import run_and_event_writer
 
 from . pmap_io             import load_pmaps
-from . pmap_io             import load_ipmt_pmaps
-from . pmap_io             import load_pmaps_with_ipmt
 from . pmap_io             import pmap_writer
-from . pmap_io             import pmap_writer_and_ipmt_writer
-from . pmap_io             import s1_s2_si_from_pmaps
 from . pmap_io             import read_run_and_event_from_pmaps_file
 
 
