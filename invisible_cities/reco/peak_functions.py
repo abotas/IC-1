@@ -11,13 +11,13 @@ last revised: @abotas & @gonzaponte. Dec 1st 2017
 
 import numpy  as np
 
-from .. core.system_of_units import units
-from .. evm .new_pmaps       import S1
-from .. evm .new_pmaps       import S2
-from .. evm .new_pmaps       import PMap
-from .. evm .new_pmaps       import PMTResponses
-from .. evm .new_pmaps       import SiPMResponses
-from .                       import peak_functions_c as cpf
+from .. core.system_of_units_c import units
+from .. evm .new_pmaps         import S1
+from .. evm .new_pmaps         import S2
+from .. evm .new_pmaps         import PMap
+from .. evm .new_pmaps         import PMTResponses
+from .. evm .new_pmaps         import SiPMResponses
+from .                         import peak_functions_c as cpf
 
 
 def calibrated_pmt_mau(cwfs, adc_to_pes, active,
