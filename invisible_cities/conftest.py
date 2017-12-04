@@ -2,6 +2,8 @@ import os
 import pytest
 import numpy as np
 
+from hypothesis             import given
+
 from pandas      import DataFrame
 from pandas      import Series
 from collections import namedtuple
@@ -14,6 +16,8 @@ from . io. dst_io   import load_dst
 from . io.hits_io   import load_hits
 from . io.hits_io   import load_hits_skipping_NN
 from . io.mchits_io import load_mchits
+
+from . evm.new_pmaps_test import pmaps as make_toy_pmap
 
 from . core.system_of_units_c import units
 
@@ -56,6 +60,15 @@ def electron_MCRD_file(request, ICDIR):
     return os.path.join(ICDIR,
                         'database/test_data',
                         request.param)
+
+
+@given(make_toy_pmap())
+def _toy_pmap(make_toy_pmap):
+    return make_toy_pmap
+
+@pytest.fixture(scope = 'session')
+def five_toy_pmaps():
+    return [_toy_pmap for evt in range(5)]
 
 
 @pytest.fixture(scope  = 'session',
