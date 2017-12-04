@@ -97,7 +97,7 @@ def csum_zs_blr_cwf(electron_RWF_file):
                                      thr_MAU =   3)
 
 
-        wfzs_ene,    wfzs_indx    = cpf.wfzs(csum_blr,    threshold=0.5)
+        wfzs_indx, wfzs_ene   = pf.indices_and_wf_above_threshold(csum_blr, 0.5)
 
         return (namedtuple('Csum',
                         """cwf cwf6

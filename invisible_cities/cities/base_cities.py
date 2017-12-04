@@ -530,7 +530,7 @@ class CalibratedCity(DeconvolutionCity):
 
     def csum_zs(self, csum, threshold):
         """Zero Suppression over csum"""
-        return cpf.wfzs(csum, threshold=threshold)
+        return pf.indices_and_wf_above_threshold(csum, threshold=threshold)
 
     def calibrated_signal_sipm(self, SiRWF):
         """Return the calibrated signal in the SiPMs."""
@@ -1012,12 +1012,16 @@ class TriggerEmulationCity(PmapCity):
 
         peak_data = {}
         for pmt_id in IC_ids_selection:
+            cwf = CWF[pmt_id]
+            thr = self.trigger_params.height.min
+
             # Emulate zero suppression in the FPGA
-            _, wfm_index = cpf.wfzs(CWF[pmt_id],
-                                          threshold = self.trigger_params.height.min)
+            wfm_index, _ = pf.indices_and_wf_above_threshold(cwf, thr)
 
             # Emulate peak search (s2) in the FPGA
-            s2 =  cpf.find_s2(CWF[pmt_id], wfm_index, **self.s2_params._asdict())
+            s2 = find_peaks(cwf, wfm_index,
+                            Pk=S2, sipm_zs_wf=None,
+                            **self.s2_params._asdict()):
             peak_data[pmt_id] = s2
 
         return peak_data

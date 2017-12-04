@@ -105,53 +105,23 @@ cpdef calibrated_pmt_mau(double [:, :]  CWF,
     return np.asarray(pmt_thr), np.asarray(pmt_thr_mau)
 
 
-cpdef _time_from_index(int [:] indx):
-    """
-    returns the times (in ns) corresponding to the indexes in indx
-    """
-    cdef int len_indx = indx.shape[0]
-    cdef double [:] tzs = np.zeros(len_indx, dtype=np.double)
-
-    cdef int i
-    cdef double step = 25 #ns
-    for i in range(len_indx):
-        tzs[i] = step * float(indx[i])
-
-    return np.asarray(tzs)
-
-
-cpdef _select_peaks_of_allowed_length(dict peak_bounds_temp, length):
-    """
-    Given a dictionary, pbounds, mapping potential peak number to potential peak, return a
-    dictionary, bounds, mapping peak numbers (consecutive and starting from 0) to those peaks in
-    pbounds of allowed length.
-    """
-
-    cdef int j = 0
-    cdef dict peak_bounds = {}
-    cdef int [:] bound_temp
-    for bound_temp in peak_bounds_temp.values():
-        if length.min <= bound_temp[1] - bound_temp[0] < length.max:
-            peak_bounds[j] = bound_temp
-            j+=1
-    return peak_bounds
-
-
-cpdef find_peak_bounds(int [:] index, time, length, int stride=4):
+cpdef find_peak_bounds(np.ndarray[np.int32_t, ndim=1] index,
+                       time, length, int stride=4):
     cdef double tmin, tmax
     cdef double [:] T = _time_from_index(index)
-    cdef dict peak_bounds  = {}
+    cdef list peak_bounds  = []
     cdef int i, j, i_i, i_min
     cdef np.ndarray where_after_tmin
     tmin, tmax = time
     lmin, lmax = length
 
-    i_min = tmin / (25*units.ns)                                # index in csum of tmin
-    where_after_tmin = np.where(np.asarray(index) >= i_min)[0]  # where, in index, time is >= tmin
-    if len(where_after_tmin) == 0 : return {}                   # find no peaks in this case
-    i_i = where_after_tmin.min()                                # index in index of tmin (or first
-                                                                # time not threshold suppressed)
-    peak_bounds[0] = np.array([index[i_i], index[i_i] + 1], dtype=np.int32)
+    i_min = tmin / (25 * units.ns)                 # index in csum of tmin
+    where_after_tmin = np.where(index >= i_min)[0] # where, in index, time is >= tmin
+    if len(where_after_tmin) == 0 : return []      # find no peaks in this case
+    i_i = where_after_tmin.min()                   # index in index of tmin (or first
+                                                   # time not threshold suppressed)
+    peak_bounds.append(np.array([index[i_i], index[i_i] + 1], dtype=np.int32))
+
 
     j = 0
     for i in range(i_i + 1, len(index)):
@@ -160,11 +130,11 @@ cpdef find_peak_bounds(int [:] index, time, length, int stride=4):
         # New peak_bounds, create new start and end index
         elif index[i] - stride > index[i-1]:
             j += 1
-            peak_bounds[j] = np.array([index[i], index[i] + 1], dtype=np.int32)
+            peak_bounds.append(np.array([index[i], index[i] + 1], dtype=np.int32))
         # Update end index in current peak_bounds
         else: peak_bounds[j][1] = index[i] + 1
 
-    return _select_peaks_of_allowed_length(peak_bounds, length)
+    return list(filter(lambda b: length.contains(np.diff(b)[0]), peak_bounds))
 
 
 cpdef rebin_responses(np.ndarray[np.float32_t, ndim=1] times,
