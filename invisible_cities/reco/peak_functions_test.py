@@ -16,17 +16,10 @@ import numpy.testing as npt
 from pytest import fixture
 from pytest import approx
 
-from hypothesis            import given
-from hypothesis            import composite
-from hypothesis.strategies import arrays
-from hypothesis.strategies import floats
-
-from .. core                   import core_functions   as cf
-from .. core.system_of_units_c import units
-
-from .. database               import load_db
-
-from .. sierpe                 import blr
+from hypothesis                import given
+from hypothesis.strategies     import composite
+from hypothesis.extra.numpy    import arrays
+from hypothesis.strategies     import floats
 
 from .                         import peak_functions   as pf
 from .                         import peak_functions_c as cpf
@@ -36,6 +29,10 @@ from .. evm.ic_containers      import ThresholdParams
 from .. evm.ic_containers      import DeconvParams
 from .. evm.ic_containers      import CalibVectors
 from .. types.ic_types         import minmax
+from .. core                   import core_functions   as cf
+from .. core.system_of_units_c import units
+from .. database               import load_db
+from .. sierpe                 import blr
 
 
 # TODO: rethink this test (list(6) could stop working anytime if DataPMT is changed)
