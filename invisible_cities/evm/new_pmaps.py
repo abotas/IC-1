@@ -73,22 +73,21 @@ class _Peak:
 
         return weighted_mean_and_std(times_above_thr, wf_above_thr)[1]
 
-    def __str__(self):
-        n_samples = len(self.times)
-        s  =  "---------------------\n"
-        s += f"{self.__class__.__name__} instance\n"
-        s +=  "---------------------\n"
-        s += f"Number of samples: {n_samples}\n"
-        s += f"Times: {self.times / units.mus} µs\n"
-        s += f"Time @ max energy: {self.time_at_max_energy / units.mus}\n"
-        s += f"Width: {self.width / units.mus} µs\n"
-        s += f"Height: {self.height} pes\n"
-        s += f"Energy: {self.total_energy} pes\n"
-        s += f"Charge: {self.total_charge} pes\n"
-        s += f"RMS: {self.rms / units.mus} µs\n"
-        return s + "\n"
-
-    __repr__ = __str__
+    def __repr__(self):
+        s  = f"""
+        ---------------------
+        {self.__class__.__name__} instance
+        ---------------------
+        Number of samples: {len(self.times)}
+        Times: {self.times / units.mus} µs
+        Time @ max energy: {self.time_at_max_energy / units.mus}
+        Width: {self.width / units.mus} µs
+        Height: {self.height} pes
+        Energy: {self.total_energy} pes
+        Charge: {self.total_charge} pes
+        RMS: {self.rms / units.mus} µs
+        """
+        return dedent(s)
 
 
 class S1(_Peak): pass
