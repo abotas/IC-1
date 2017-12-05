@@ -41,6 +41,11 @@ def config_tmpdir(tmpdir_factory):
     return tmpdir_factory.mktemp('configure_tests')
 
 
+@pytest.fixture(scope = 'session')
+def output_tmpdir(tmpdir_factory):
+    return tmpdir_factory.mktemp('output_files')
+
+
 @pytest.fixture(scope  = 'session',
                 params = ['electrons_40keV_z250_RWF.h5',
                           'electrons_511keV_z250_RWF.h5',
