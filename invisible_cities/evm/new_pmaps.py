@@ -26,7 +26,7 @@ class _Peak:
     def __init__(self, times, pmts, sipms):
         length_times = len(times)
         length_pmts  = pmts .all_waveforms.shape[1]
-        length_sipms = sipms.all_waveforms.shape[1]
+        length_sipms = sipms.all_waveforms.shape[1] if sipms is not None else 0
         if not (length_times == length_pmts ==length_sipms):
             msg  =  "Shapes don't match!\n"
             msg += f"times has length {length_times}\n"
