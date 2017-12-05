@@ -22,10 +22,11 @@ from . evm.new_pmaps_test import pmaps as make_toy_pmap
 from . core.system_of_units_c import units
 
 
-tbl_data = namedtuple("tbl_data", "filename group node")
-dst_data = namedtuple("dst_data", "file_info config read true")
-pmp_data = namedtuple("pmp_data", "s1 s2 s2si")
-mcs_data = namedtuple("mcs_data", "pmap hdst")
+tbl_data = namedtuple('tbl_data'  , 'filename group node')
+dst_data = namedtuple('dst_data'  , 'file_info config read true')
+pmp_data = namedtuple('pmp_dfs'   , 's1 s2 si, s1pmt, s2pmt')
+pmp_data = namedtuple('pmp_data'  , 's1 s2')
+mcs_data = namedtuple('mcs_data'  , 'pmap hdst')
 
 
 @pytest.fixture(scope = 'session')
@@ -106,32 +107,34 @@ def mc_particle_and_hits_data(electron_MCRD_file):
     return efile, name, pdg, vi, vf, p, Ep, nhits, X, Y, Z, E, t
 
 
+
 @pytest.fixture(scope='session')
 def KrMC_pmaps(ICDIR):
     test_file = os.path.join(ICDIR,
-                             "database",
-                             "test_data",
-                             "dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_PMP_10evt.h5")
-    S1_evts   = [15, 17, 19, 25, 27]
-    S2_evts   = [15, 17, 19, 21, 23, 25, 27, 29, 31, 33]
-    S2Si_evts = [15, 17, 19, 21, 23, 25, 27, 29, 31, 33]
-    s1t, s2t, s2sit = load_pmaps_as_df(test_file)
-    s1, s2, s2si    = load_pmaps(test_file)
+                             'database',
+                             'test_data',
+                             'dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_PMP_10evt.h5')
+    s1df, s2df, s2sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(test_file)
+    pmaps     = load_pmaps(test_file)
+    s1_events = [event for event, pmap in pmaps.items() if len(pmap.s1s)]
+    s2_events = [event for event, pmap in pmaps.items() if len(pmap.s2s)]
+    si_events = [event for event, pmap in pmaps.items() if [s2.sipms is not None for s2 in pmap].any()]
 
     return (test_file,
-            pmp_data(s1t, s2t, s2sit),
-            pmp_data(S1_evts, S2_evts, S2Si_evts),
-            pmp_data(s1, s2, s2si))
+            pmp_dfs (s1df     , s2df     , sidf, s1pmtdf, s2pmtdf),
+            pmp_data(s1_events, s2_events, si_events),
+            pmp_data(s1       , s2))
+
 
 
 @pytest.fixture(scope='session')
 def KrMC_kdst(ICDIR):
     test_file = os.path.join(ICDIR,
-                             "database",
-                             "test_data",
-                             "dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_KDST_10evt.h5")
-    group = "DST"
-    node  = "Events"
+                             'database',
+                             'test_data',
+                             'dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_KDST_10evt.h5')
+    group = 'DST'
+    node  = 'Events'
 
     configuration = dict(run_number  =  -4446,
                          drift_v     =      2 * units.mm / units.mus,
@@ -183,32 +186,32 @@ def KrMC_kdst(ICDIR):
     Xrms  = [    6.14794   ,    4.999254  ,    5.906495  ,    6.198707   ,   6.42701   ]
     Yrms  = [    6.802864  ,    5.797995  ,    6.467924  ,    5.600673  ,    5.670117  ]
 
-    df_true = DataFrame({"event": event,
-                         "time" : time ,
-                         "peak" : peak ,
-                         "nS2"  : nS2  ,
+    df_true = DataFrame({'event': event,
+                         'time' : time ,
+                         'peak' : peak ,
+                         'nS2'  : nS2  ,
 
-                         "S1w"  : S1w,
-                         "S1h"  : S1h,
-                         "S1e"  : S1e,
-                         "S1t"  : S1t,
+                         'S1w'  : S1w,
+                         'S1h'  : S1h,
+                         'S1e'  : S1e,
+                         'S1t'  : S1t,
 
-                         "S2w"  : S2w,
-                         "S2h"  : S2h,
-                         "S2e"  : S2e,
-                         "S2q"  : S2q,
-                         "S2t"  : S2t,
-                         "Nsipm": Nsipm,
+                         'S2w'  : S2w,
+                         'S2h'  : S2h,
+                         'S2e'  : S2e,
+                         'S2q'  : S2q,
+                         'S2t'  : S2t,
+                         'Nsipm': Nsipm,
 
-                         "DT"   : DT,
-                         "Z"    : Z,
-                         "Zrms" : Zrms,
-                         "X"    : X,
-                         "Y"    : Y,
-                         "R"    : R,
-                         "Phi"  : Phi,
-                         "Xrms" : Xrms,
-                         "Yrms" : Yrms})
+                         'DT'   : DT,
+                         'Z'    : Z,
+                         'Zrms' : Zrms,
+                         'X'    : X,
+                         'Y'    : Y,
+                         'R'    : R,
+                         'Phi'  : Phi,
+                         'Xrms' : Xrms,
+                         'Yrms' : Yrms})
 
     df_read = load_dst(test_file,
                        group = group,
@@ -223,11 +226,11 @@ def KrMC_kdst(ICDIR):
 @pytest.fixture(scope='session')
 def KrMC_hdst(ICDIR):
     test_file = os.path.join(ICDIR,
-                             "database",
-                             "test_data",
-                             "dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_HDST_10evt.h5")
-    group = "RECO"
-    node  = "Events"
+                             'database',
+                             'test_data',
+                             'dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_HDST_10evt.h5')
+    group = 'RECO'
+    node  = 'Events'
 
     configuration = dict(run_number    =  -4446,
                          rebin         =      2,
@@ -323,17 +326,17 @@ def KrMC_hdst(ICDIR):
               1.30383865e+03,  1.50284361e+02,  8.28040495e+01,  1.24097345e+03,  3.28156814e+03,
               3.99279757e+02,  1.81999011e+03,  1.81617418e+02]
 
-    df_true = DataFrame({"event": event,
-                         "time" : time ,
-                         "npeak": peak ,
-                         "nsipm": nsipm,
-                         "X"    : X,
-                         "Y"    : Y,
-                         "Xrms" : Xrms,
-                         "Yrms" : Yrms,
-                         "Z"    : Z,
-                         "Q"    : Q,
-                         "E"    : E})
+    df_true = DataFrame({'event': event,
+                         'time' : time ,
+                         'npeak': peak ,
+                         'nsipm': nsipm,
+                         'X'    : X,
+                         'Y'    : Y,
+                         'Xrms' : Xrms,
+                         'Yrms' : Yrms,
+                         'Z'    : Z,
+                         'Q'    : Q,
+                         'E'    : E})
 
     df_read = load_dst(test_file,
                        group = group,
@@ -357,7 +360,7 @@ def KrMC_true_hits(KrMC_pmaps, KrMC_hdst):
 @pytest.fixture(scope='session')
 def TlMC_hits(ICDIR):
     # Input file was produced to contain exactly 15 S1 and 50 S2.
-    hits_file_name = ICDIR + "/database/test_data/dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5"
+    hits_file_name = ICDIR + '/database/test_data/dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5'
     hits = load_hits(hits_file_name)
     return hits
 
@@ -365,7 +368,7 @@ def TlMC_hits(ICDIR):
 @pytest.fixture(scope='session')
 def TlMC_hits_skipping_NN(ICDIR):
     # Input file was produced to contain exactly 15 S1 and 50 S2.
-    hits_file_name = ICDIR + "/database/test_data/dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5"
+    hits_file_name = ICDIR + '/database/test_data/dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5'
     hits = load_hits_skipping_NN(hits_file_name)
     return hits
 
@@ -378,7 +381,7 @@ def corr_toy_data(ICDIR):
     U = np.arange( 1e2, 1e2 + x.size*y.size).reshape(x.size, y.size)
     N = np.ones_like(U)
 
-    corr_filename = os.path.join(ICDIR, "database/test_data/toy_corr.h5")
+    corr_filename = os.path.join(ICDIR, 'database/test_data/toy_corr.h5')
     return corr_filename, (x, y, E, U, N)
 
 
@@ -394,7 +397,7 @@ def hits_toy_data(ICDIR):
     q     = np.linspace( 1e3,  1e3, 100)
     e     = np.linspace( 2e3,  1e4, 100)
 
-    hits_filename = os.path.join(ICDIR, "database/test_data/toy_hits.h5")
+    hits_filename = os.path.join(ICDIR, 'database/test_data/toy_hits.h5')
     return hits_filename, (npeak, nsipm, x, y, xrms, yrms, z, q, e)
 
 
