@@ -11,16 +11,16 @@ class PMap:
         self.s1s = tuple(s1s)
         self.s2s = tuple(s2s)
 
-    def __str__(self):
-        s  =  "---------------------\n"
-        s += f"PMap instance\n"
-        s +=  "---------------------\n"
-        s += f"Number of S1s: {len(self.s1s)}\n"
-        s += f"Number of S2s: {len(self.s2s)}\n"
-        return s + "\n"
+    def __repr__(self):
+        s  = f"""
+        ---------------------
+        PMap instance
+        ---------------------
+        Number of S1s: {len(self.s1s)}
+        Number of S2s: {len(self.s2s)}
+        """
+        return dedent(s)
 
-
-    __repr__ = __str__
 
 class _Peak:
     def __init__(self, times, pmts, sipms):
