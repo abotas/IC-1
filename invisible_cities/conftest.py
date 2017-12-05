@@ -107,57 +107,6 @@ def mc_particle_and_hits_data(electron_MCRD_file):
 
 
 @pytest.fixture(scope='session')
-def s1_dataframe_converted():
-    evs  = [   0,     0,     0,     0,     0,      3,     3]
-    peak = [   0,     0,     1,     1,     1,      0,     0]
-    time = [1000., 1025., 2050., 2075., 2100., 5000., 5025.]
-    ene  = [123.4, 140.8, 730.0, 734.2, 732.7, 400.0, 420.3]
-    df = DataFrame.from_dict(dict(
-        event  = Series(evs , dtype=np.  int32),
-        evtDaq = evs,
-        peak   = Series(peak, dtype=np.   int8),
-        time   = Series(time, dtype=np.float32),
-        ene    = Series(ene , dtype=np.float32),
-    ))
-    return df_to_s1_dict(df), df
-
-
-@pytest.fixture(scope='session')
-def s2_dataframe_converted():
-    evs  = [   0,     0,     0,     0,     0,      3,     3]
-    peak = [   0,     0,     1,     1,     1,      0,     0]
-    time = [1000., 1025., 2050., 2075., 2100., 5000., 5025.]
-    ene  = [123.4, 140.8, 730.0, 734.2, 732.7, 400.0, 420.3]
-    df = DataFrame.from_dict(dict(
-        event  = Series(evs , dtype=np.  int32),
-        evtDaq = evs,
-        peak   = Series(peak, dtype=np.   int8),
-        time   = Series(time, dtype=np.float32),
-        ene    = Series(ene , dtype=np.float32),
-    ))
-
-    return df_to_s2_dict(df), df
-
-
-@pytest.fixture(scope='session')
-def s2si_dataframe_converted():
-    evs  = [  0,   0,  0,  0,   0,  0,  0,  3,  3,  3,  3]
-    peak = [  0,   0,  0,  0,   1,  1,  1,  0,  0,  0,  0]
-    sipm = [  0,   0,  1,  1,   3,  3,  3, 10, 10, 15, 15]
-    ene  = [1.5, 2.5, 15, 25, 5.5, 10, 20,  8,  9, 17, 18]
-
-    dfs2si = DataFrame.from_dict(dict(
-        event   = Series(evs , dtype=np.int32),
-        evtDaq  = evs,
-        peak    = Series(peak, dtype=np.   int8),
-        nsipm   = Series(sipm, dtype=np.  int16),
-        ene     = Series(ene , dtype=np.float32),
-    ))
-    _,  dfs2 =  s2_dataframe_converted()
-    return df_to_s2si_dict(dfs2, dfs2si), dfs2si
-
-
-@pytest.fixture(scope='session')
 def KrMC_pmaps(ICDIR):
     test_file = os.path.join(ICDIR,
                              "database",
