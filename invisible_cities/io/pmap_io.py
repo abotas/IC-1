@@ -104,9 +104,7 @@ def load_pmaps(filename):
     s1df, s2df, sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(filename)
 
     # Hack fix to allow loading pmaps without individual pmts
-    if s1pmtdf is None:
-        s1pmtdf = build_ipmtdf_from_sumdf(s1df)
-        print(s1pmtdf)
+    if s1pmtdf is None: s1pmtdf = build_ipmtdf_from_sumdf(s1df)
     if s2pmtdf is None: s2pmtdf = build_ipmtdf_from_sumdf(s2df)
 
     event_numbers = set.union(set(s1df.event), set(s2df.event))
