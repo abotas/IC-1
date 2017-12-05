@@ -1,3 +1,5 @@
+from textwrap import dedent
+
 import numpy as np
 
 from .. core.system_of_units_c import units
@@ -117,19 +119,21 @@ class _SensorResponses:
     def where_above_threshold(self, thr):
         return np.where(self.sum_over_sensors >= thr)[0]
 
-    def __str__(self):
+    def __repr__(self):
         n_sensors = len(self.ids)
-        s  =  "------------------------\n"
-        s += f"{self.__class__.__name__} instance\n"
-        s +=  "------------------------\n"
-        s += f"Number of sensors: {n_sensors}\n"
-        for ID, wf in self._wfs_dict.items():
-            s += f"| ID: {ID}\n"
-            s += f"| WF: {wf}\n"
-            s +=  "| \n"
-        return s + "\n"
+        header = dedent(f"""
+            ------------------------
+            {self.__class__.__name__} instance
+            ------------------------
+            Number of sensors: {n_sensors}""")
 
-    __repr__ = __str__
+        loop_items = []
+        for ID, wf in self._wfs_dict.items():
+            loop_items.append(dedent(f"""
+                        | ID: {ID}
+                        | WF: {wf}
+                        """))
+        return header + "".join(loop_items)
 
 
 class PMTResponses (_SensorResponses): pass
