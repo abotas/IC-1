@@ -54,6 +54,7 @@ from .. evm.event_model         import HitCollection
 from .. evm.event_model         import Hit
 from .. evm.event_model         import Cluster
 from .. evm.event_model         import Voxel
+from .. evm.new_pmaps           import S2
 from .. evm.nh5                 import DECONV_PARAM
 
 from .. sierpe                  import blr
@@ -1013,8 +1014,8 @@ class TriggerEmulationCity(PmapCity):
             wfm_index, _ = pf.indices_and_wf_above_threshold(cwf, thr)
 
             # Emulate peak search (s2) in the FPGA
-            s2 = find_peaks(cwf, wfm_index,
-                            Pk=S2, sipm_zs_wf=None,
+            s2 = pf.find_peaks(cwf, wfm_index,
+                            Pk=S2, pmt_ids=[pmt_id], sipm_zs_wf=None,
                             **self.s2_params._asdict())
             peak_data[pmt_id] = s2
 
