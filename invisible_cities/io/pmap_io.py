@@ -1,10 +1,16 @@
 from functools         import partial
 
+import numpy  as np
 import tables as tb
 import pandas as pd
 
+from .. evm .new_pmaps     import S1
+from .. evm .new_pmaps     import S2
+from .. evm .new_pmaps     import  PMTResponses
+from .. evm .new_pmaps     import SiPMResponses
 from .. evm                import nh5     as table_formats
 from .. reco.tbl_functions import filters as tbl_filters
+
 
 
 def store_peak(pmt_table, pmti_table, si_table,
@@ -77,8 +83,8 @@ def load_pmaps_as_df(filename):
         return (read(pmp.S1   .read()),
                 read(pmp.S2   .read()),
                 read(pmp.S2Si .read()),
-                read(pmp.S1Pmt.read()) if S1Pmt in pmp else None,
-                read(pmp.S2Pmt.read()) if S2Pmt in pmp else None)
+                read(pmp.S1Pmt.read()) if 'S1Pmt' in pmp else None,
+                read(pmp.S2Pmt.read()) if 'S2Pmt' in pmp else None)
 
 
 def build_ipmtdf_from_sumdf(sumdf):
@@ -88,8 +94,8 @@ def build_ipmtdf_from_sumdf(sumdf):
     """
     ipmtdf = sumdf.copy()
     ipmtdf = ipmtdf.rename(index=str, columns={'time': 'npmt'})
-    ipmtdf['nmpt'] = -1
-    return imptdf
+    ipmtdf['npmt'] = -1
+    return ipmtdf
 
 
 def load_pmaps(filename):
@@ -98,10 +104,12 @@ def load_pmaps(filename):
     s1df, s2df, sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(filename)
 
     # Hack fix to allow loading pmaps without individual pmts
-    if s1pmtdf is None: s1pmtdf = build_ipmtdf_from_sumdf(s1df)
+    if s1pmtdf is None:
+        s1pmtdf = build_ipmtdf_from_sumdf(s1df)
+        print(s1pmtdf)
     if s2pmtdf is None: s2pmtdf = build_ipmtdf_from_sumdf(s2df)
 
-    event_numbers = set.union(set(s1t.event), set(s2t.event))
+    event_numbers = set.union(set(s1df.event), set(s2df.event))
     for event_number in event_numbers:
         s1s = s1s_from_df(s1df   [s1df   .event == event_number],
                           s1pmtdf[s1pmtdf.event == event_number])
@@ -116,7 +124,7 @@ def load_pmaps(filename):
 
 def build_pmt_responses(pmtdf, ipmtdf):
     times   =            pmtdf.time.values
-    pmt_ids = np.unique( pmtdf.npmt.values)
+    pmt_ids = np.unique(ipmtdf.npmt.values)
     enes    =           ipmtdf.ene .values.reshape(pmt_ids.size,
                                                      times.size)
     return times, PMTResponses(pmt_ids, enes)
