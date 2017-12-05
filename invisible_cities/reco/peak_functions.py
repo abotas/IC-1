@@ -69,9 +69,10 @@ def find_peak_bounds(indices, time, length, stride):
 def find_peaks(ccwf, index,
                time, length,
                stride, rebin_stride,
-               Pk, sipm_zs_wf=None):
+               Pk, pmt_ids=None, sipm_zs_wf=None):
+    if ccwf.ndim == 1 :    ccwf = ccwf[np.newaxis]
+    if pmt_ids is None: pmt_ids = np.arange(ccwf.shape[0])
     peaks   = []
-    pmt_ids = np.arange(ccwf.shape[0])
     times   = np.arange(ccwf.shape[1]) * 25 * units.ns
     sipm_r  = None
 
