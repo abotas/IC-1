@@ -1,4 +1,4 @@
-from functools import partial
+from functools         import partial
 
 import tables as tb
 import pandas as pd
@@ -72,23 +72,34 @@ def _make_tables(hdf5_file, compression):
 def load_pmaps_as_df(filename):
     """Return the PMAPS as PD DataFrames."""
     with tb.open_file(filename, 'r') as h5f:
-        s1t    = h5f.root.PMAPS.S1
-        s2t    = h5f.root.PMAPS.S2
-        s2sit  = h5f.root.PMAPS.S2Si
-        s1pmtt = h5f.root.PMAPS.S1Pmt
-        s2pmtt = h5f.root.PMAPS.S2Pmt
+        pmp = h5f.root.PMAPS
+        read = pd.DataFrame.from_records
+        return (read(pmp.S1   .read()),
+                read(pmp.S2   .read()),
+                read(pmp.S2Si .read()),
+                read(pmp.S1Pmt.read()) if S1Pmt in pmp else None,
+                read(pmp.S2Pmt.read()) if S2Pmt in pmp else None)
 
-        return (pd.DataFrame.from_records(s1t   .read()),
-                pd.DataFrame.from_records(s2t   .read()),
-                pd.DataFrame.from_records(s2sit .read()),
-                pd.DataFrame.from_records(s1pmtt.read()),
-                pd.DataFrame.from_records(s2pmtt.read()))
+
+def build_ipmtdf_from_sumdf(sumdf):
+    """
+    Takes a sumdf (either s1df or s2df) and returns a corresponding ipmtdf where the energies
+    are the same as in sumdf, and the pmtid (npmt) == -1 for all rows
+    """
+    ipmtdf = sumdf.copy()
+    ipmtdf = ipmtdf.rename(index=str, columns={'time': 'npmt'})
+    ipmtdf['nmpt'] = -1
+    return imptdf
 
 
 def load_pmaps(filename):
     """Read the PMAP file and return transient PMAP rep."""
     pmap_dict = {}
     s1df, s2df, sidf, s1pmtdf, s2pmtdf = load_pmaps_as_df(filename)
+
+    # Hack fix to allow loading pmaps without individual pmts
+    if s1pmtdf is None: s1pmtdf = build_ipmtdf_from_sumdf(s1df)
+    if s2pmtdf is None: s2pmtdf = build_ipmtdf_from_sumdf(s2df)
 
     event_numbers = set.union(set(s1t.event), set(s2t.event))
     for event_number in event_numbers:
@@ -147,6 +158,6 @@ def read_run_and_event_from_pmaps_file(filename):
     with tb.open_file(filename, 'r') as h5f:
         event_t = h5f.root.Run.events
         run_t   = h5f.root.Run.runInfo
-
-        return (pd.DataFrame.from_records(run_t  .read()),
-                pd.DataFrame.from_records(event_t.read()))
+        read = pd.DataFrame.from_records
+        return (read(run_t  .read()),
+                read(event_t.read()))
