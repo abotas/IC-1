@@ -72,6 +72,7 @@ def find_peaks(ccwf, index,
                time, length,
                stride, rebin_stride,
                Pk, sipm_zs_wf=None, thr_sipm_s2=0):
+    if ccwf.ndim == 1: ccwf = ccwf[np.newaxis]
     peaks   = []
     pmt_ids = np.arange(ccwf.shape[0])
     times   = np.arange(ccwf.shape[1]) * 25 * units.ns
