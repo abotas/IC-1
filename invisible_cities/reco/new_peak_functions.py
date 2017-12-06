@@ -70,7 +70,7 @@ def select_peaks(peaks, time, length):
 
 def extract_peak_from_wfs(indices, times, wfs, rebin_stride=1):
     slice_           = slice(indices)
-    pk_times_        = times[   slice_] if times is not None else None
+    pk_times_        = times[   slice_] * 25 * units.ns if times is not None else None
     wfs_             = wfs  [:, slice_]
     pk_times, sr_wfs = rebin_times_and_waveforms(pk_times_, wfs_, rebin_stride)
     return pk_times, sr_wfs
@@ -103,7 +103,6 @@ def find_peaks(ccwf, index,
 
         si_indices  = tuple(index // rebin_stride for index in indices)
         sipm_r = get_sipm_responses(si_indices, ipm_wfs, thr_sipm_s2)
-
 
         pk = Pk(pk_times, pmt_r, sipm_r)
         peaks.append(pk)
