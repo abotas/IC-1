@@ -68,6 +68,14 @@ def select_peaks(peaks, time, length):
     return list(filter(is_valid, peaks))
 
 
+def extract_peak_from_wfs(i_0, i_f, times, wfs, rebin_stride=1):
+    slice_           = slice(i_0, i_f + 1)
+    pk_times_        = times[   slice_] if times is not None else None
+    wfs_             = wfs  [:, slice_]
+    pk_times, sr_wfs = rebin_times_and_waveforms(pk_times_, wfs_, rebin_stride)
+    return pk_times, sr_wfs
+
+
 def find_peaks(ccwf, index,
                time, length,
                stride, rebin_stride,
@@ -75,27 +83,22 @@ def find_peaks(ccwf, index,
                sipm_zs_wf=None, thr_sipm_s2=0):
     if ccwf.ndim ==  1:    ccwf = ccwf[np.newaxis]
     if pmt_ids is None: pmt_ids = np.arange(ccwf.shape[0])
-    peaks   = []
-    times   = np.arange(ccwf.shape[1]) * 25 * units.ns
-    sipm_r  = None
 
+    peaks           = []
+    times           = np.arange(ccwf.shape[1]) * 25 * units.ns
     indices_split   = split_in_peaks(index, stride)
     selected_splits = select_peaks  (indices_split, time, length)
+
     for peak_no, indices in selected_splits.items():
-        slice_     = slice(indices[0], indices[-1] + 1)
-        pk_times_  = times[   slice_]
-        pmt_wfs_   = ccwf [:, slice_]
-        (pk_times,
-         pmt_wfs)  = rebin_responses(pk_times_, pmt_wfs_, rebin_stride)
-        pmt_r      = PMTResponses(pmt_ids, pmt_wfs)
+        pk_times, pmt_wfs = extract_peak_from_wfs(*indices, times, ccwf, rebin_stride)
+        pmt_r             = PMTResponses(pmt_ids, pmt_wfs)
 
         if sipm_zs_wf is not None:
-            slice_      = slice(indices[0]  // rebin_stride,
-                                indices[-1] // rebin_stride + 1)
-            sipm_wfs    = sipm_zs_wf[:, slice_]
-            (sipm_ids,
-             sipm_wfs)  = select_sipms_above_time_integrated_thr(sipm_wfs, thr_sipm_s2)
-            sipm_r     = SiPMResponses(sipm_ids, sipm_wfs)
+            si_indices          = (index // rebin_stride for index in indices)
+            _       , sipm_wfs_ = extract_peak_from_wfs(*si_indices, None, sipm_zs_wf)
+            sipm_ids, sipm_wfs  = select_sipms_above_time_integrated_thr(sipm_wfs_, thr_sipm_s2)
+            sipm_r              = SiPMResponses(sipm_ids, sipm_wfs)
+        else: sipm_r = None
 
         pk = Pk(pk_times, pmt_r, sipm_r)
         peaks.append(pk)
